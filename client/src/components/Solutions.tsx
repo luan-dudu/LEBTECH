@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Wrench, Package, Lightbulb, ArrowRight } from 'lucide-react';
+import { Wrench, Package, Lightbulb, Cog, BarChart3, ArrowRight } from 'lucide-react';
 import TechnicalSupportModal from './TechnicalSupportModal';
 import EquipmentSalesModal from './EquipmentSalesModal';
 import ConsultingModal from './ConsultingModal';
 
 export default function Solutions() {
+  const [, setLocation] = useLocation();
   const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | null>(null);
 
   const solutions = [
@@ -15,7 +17,7 @@ export default function Solutions() {
       description: 'Suporte especializado 24/7 para manutenção, diagnóstico e resolução de problemas em sua infraestrutura de TI.',
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/technical-support-2iUhqb4CRqqUqRPUcCd9zA.webp',
       icon: Wrench,
-      features: ['Suporte 24/7', 'Resposta Rápida', 'Técnicos Certificados'],
+      path: '/servicos/assistencia-tecnica',
       modalKey: 'technical' as const,
     },
     {
@@ -24,17 +26,35 @@ export default function Solutions() {
       description: 'Computadores, servidores, periféricos e equipamentos de rede de marcas líderes com garantia e suporte.',
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/equipment-sales-FpGkey2cqr98dsWH5Az8Nr.webp',
       icon: Package,
-      features: ['Marcas Premium', 'Melhor Preço', 'Entrega Rápida'],
+      path: '/servicos/venda-equipamentos',
       modalKey: 'equipment' as const,
     },
     {
       id: 3,
-      title: 'Consultoria em TI',
+      title: 'Consultoria de TI',
       description: 'Estratégia digital, otimização de processos e implementação de soluções tecnológicas alinhadas ao seu negócio.',
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/consulting-services-P3viMfhQo5ZoYms7h7R4RN.webp',
       icon: Lightbulb,
-      features: ['Análise Completa', 'Planejamento Estratégico', 'Implementação'],
+      path: '/servicos/consultoria-ti',
       modalKey: 'consulting' as const,
+    },
+    {
+      id: 4,
+      title: 'Projetos de TI',
+      description: 'Desenvolvimento e implementação de projetos tecnológicos customizados para sua empresa.',
+      image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/tech-background-pattern-nbMFWsLn4cp8LrSB4sYcZv.webp',
+      icon: Cog,
+      path: '/servicos/projetos-ti',
+      modalKey: null,
+    },
+    {
+      id: 5,
+      title: 'Gestão de TI',
+      description: 'Monitoramento, gestão e suporte contínuo de TI com service desk e help desk para sua empresa.',
+      image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/hero-tech-solutions-oH9Lk8G822ZHH4RzjAGPwg.webp',
+      icon: BarChart3,
+      path: '/servicos/gestao-ti',
+      modalKey: null,
     },
   ];
 
@@ -51,17 +71,17 @@ export default function Solutions() {
           </p>
         </div>
 
-        {/* Solutions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+        {/* Solutions Grid - 5 columns responsive */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-16">
           {solutions.map((solution) => {
             const Icon = solution.icon;
             return (
               <div
                 key={solution.id}
-                className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10"
+                className="group bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10 flex flex-col"
               >
                 {/* Image */}
-                <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500/10 to-purple-600/10">
+                <div className="relative h-32 overflow-hidden bg-gradient-to-br from-blue-500/10 to-purple-600/10">
                   <img
                     src={solution.image}
                     alt={solution.title}
@@ -71,32 +91,22 @@ export default function Solutions() {
                 </div>
 
                 {/* Content */}
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center gap-3">
+                <div className="p-5 space-y-3 flex flex-col flex-1">
+                  <div className="flex items-center gap-2">
                     <div className="p-2 rounded-lg bg-blue-500/20">
-                      <Icon className="text-blue-400" size={24} />
+                      <Icon className="text-blue-400" size={20} />
                     </div>
-                    <h3 className="text-xl font-bold text-foreground">{solution.title}</h3>
+                    <h3 className="text-lg font-bold text-foreground">{solution.title}</h3>
                   </div>
 
-                  <p className="text-foreground/70 leading-relaxed">{solution.description}</p>
+                  <p className="text-foreground/70 leading-relaxed text-sm flex-1">{solution.description}</p>
 
-                  {/* Features */}
-                  <ul className="space-y-2">
-                    {solution.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-2 text-sm text-foreground/60">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
+                  {/* Button */}
                   <Button
-                    className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold mt-4 group/btn"
-                    onClick={() => setOpenModal(solution.modalKey)}
+                    className="w-full bg-black hover:bg-gray-800 text-white font-semibold mt-3 text-sm py-2"
+                    onClick={() => setLocation(solution.path)}
                   >
-                    Solicitar Orçamento
-                    <ArrowRight className="ml-2 group-hover/btn:translate-x-1 transition-transform" size={16} />
+                    Conhecer
                   </Button>
                 </div>
               </div>
