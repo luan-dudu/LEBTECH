@@ -8,7 +8,6 @@ export default function Header() {
   const navItems = [
     { label: 'Home', href: '#home' },
     { label: 'Soluções', href: '#solucoes' },
-    { label: 'Clientes', href: '#clientes' },
     { label: 'Contato', href: '#contato' },
   ];
 
@@ -29,7 +28,7 @@ export default function Header() {
             <a
               key={item.href}
               href={item.href}
-              className="text-foreground/80 hover:text-primary transition-colors duration-300 font-medium"
+              className="text-foreground/80 hover:text-blue-400 transition-colors duration-300 font-medium"
             >
               {item.label}
             </a>

@@ -51,11 +51,7 @@ export default function Footer() {
                   Sobre Nós
                 </a>
               </li>
-              <li>
-                <a href="#clientes" className="text-foreground/60 hover:text-blue-400 transition-colors">
-                  Clientes
-                </a>
-              </li>
+
               <li>
                 <a href="#contato" className="text-foreground/60 hover:text-blue-400 transition-colors">
                   Contato

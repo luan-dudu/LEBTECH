@@ -1,7 +1,13 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Wrench, Package, Lightbulb, ArrowRight } from 'lucide-react';
+import TechnicalSupportModal from './TechnicalSupportModal';
+import EquipmentSalesModal from './EquipmentSalesModal';
+import ConsultingModal from './ConsultingModal';
 
 export default function Solutions() {
+  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | null>(null);
+
   const solutions = [
     {
       id: 1,
@@ -10,6 +16,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/technical-support-2iUhqb4CRqqUqRPUcCd9zA.webp',
       icon: Wrench,
       features: ['Suporte 24/7', 'Resposta Rápida', 'Técnicos Certificados'],
+      modalKey: 'technical' as const,
     },
     {
       id: 2,
@@ -18,6 +25,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/equipment-sales-FpGkey2cqr98dsWH5Az8Nr.webp',
       icon: Package,
       features: ['Marcas Premium', 'Melhor Preço', 'Entrega Rápida'],
+      modalKey: 'equipment' as const,
     },
     {
       id: 3,
@@ -26,6 +34,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/consulting-services-P3viMfhQo5ZoYms7h7R4RN.webp',
       icon: Lightbulb,
       features: ['Análise Completa', 'Planejamento Estratégico', 'Implementação'],
+      modalKey: 'consulting' as const,
     },
   ];
 
@@ -84,9 +93,9 @@ export default function Solutions() {
 
                   <Button
                     className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold mt-4 group/btn"
-                    onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
+                    onClick={() => setOpenModal(solution.modalKey)}
                   >
-                    Saiba Mais
+                    Solicitar Orçamento
                     <ArrowRight className="ml-2 group-hover/btn:translate-x-1 transition-transform" size={16} />
                   </Button>
                 </div>
@@ -107,10 +116,24 @@ export default function Solutions() {
             className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-6 text-lg"
             onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            Solicitar Orçamento Agora
+            Fale com Nossos Especialistas
           </Button>
         </div>
       </div>
+
+      {/* Modals */}
+      <TechnicalSupportModal
+        isOpen={openModal === 'technical'}
+        onClose={() => setOpenModal(null)}
+      />
+      <EquipmentSalesModal
+        isOpen={openModal === 'equipment'}
+        onClose={() => setOpenModal(null)}
+      />
+      <ConsultingModal
+        isOpen={openModal === 'consulting'}
+        onClose={() => setOpenModal(null)}
+      />
     </section>
   );
 }
