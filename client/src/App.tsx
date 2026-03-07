@@ -11,7 +11,7 @@ import ServiceDetail from "./pages/ServiceDetail";
 function Router() {
   return (
     <Switch>
-      <Route path={"/ "} component={Home} />
+      <Route path={"/"} component={Home} />
       <Route path={"/servicos/:service"} component={ServiceDetail} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
