@@ -5,10 +5,12 @@ import { Wrench, Package, Lightbulb, Cog, BarChart3, ArrowRight } from 'lucide-r
 import TechnicalSupportModal from './TechnicalSupportModal';
 import EquipmentSalesModal from './EquipmentSalesModal';
 import ConsultingModal from './ConsultingModal';
+import ProjectsModal from './ProjectsModal';
+import ManagementModal from './ManagementModal';
 
 export default function Solutions() {
   const [, setLocation] = useLocation();
-  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | null>(null);
+  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | 'projects' | 'management' | null>(null);
 
   const solutions = [
     {
@@ -45,7 +47,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/tech-background-pattern-nbMFWsLn4cp8LrSB4sYcZv.webp',
       icon: Cog,
       path: '/servicos/projetos-ti',
-      modalKey: null,
+      modalKey: 'projects' as const,
     },
     {
       id: 5,
@@ -54,7 +56,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/hero-tech-solutions-oH9Lk8G822ZHH4RzjAGPwg.webp',
       icon: BarChart3,
       path: '/servicos/gestao-ti',
-      modalKey: null,
+      modalKey: 'management' as const,
     },
   ];
 
@@ -152,6 +154,14 @@ export default function Solutions() {
       />
       <ConsultingModal
         isOpen={openModal === 'consulting'}
+        onClose={() => setOpenModal(null)}
+      />
+      <ProjectsModal
+        isOpen={openModal === 'projects'}
+        onClose={() => setOpenModal(null)}
+      />
+      <ManagementModal
+        isOpen={openModal === 'management'}
         onClose={() => setOpenModal(null)}
       />
     </section>
