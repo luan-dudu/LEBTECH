@@ -1,6 +1,12 @@
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Clock, Users, Zap } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, Users, Zap, BarChart3 } from 'lucide-react';
+import TechnicalSupportModal from '@/components/TechnicalSupportModal';
+import EquipmentSalesModal from '@/components/EquipmentSalesModal';
+import ConsultingModal from '@/components/ConsultingModal';
+import ProjectsModal from '@/components/ProjectsModal';
+import ManagementModal from '@/components/ManagementModal';
 
 interface ServiceInfo {
   title: string;
@@ -287,12 +293,30 @@ const servicesData: Record<string, ServiceInfo> = {
 };
 
 // Import icons
-import { Lightbulb, Cog, BarChart3 } from 'lucide-react';
+import { Lightbulb, Cog } from 'lucide-react';
 
 export default function ServiceDetail() {
   const [location, setLocation] = useLocation();
+  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | 'projects' | 'management' | null>(null);
   const serviceKey = location.split('/').pop() || '';
   const service = servicesData[serviceKey];
+
+  const getModalForService = (service: string) => {
+    switch (service) {
+      case 'assistencia-tecnica':
+        return 'technical';
+      case 'venda-equipamentos':
+        return 'equipment';
+      case 'consultoria-ti':
+        return 'consulting';
+      case 'projetos-ti':
+        return 'projects';
+      case 'gestao-ti':
+        return 'management';
+      default:
+        return null;
+    }
+  };
 
   if (!service) {
     return (
@@ -404,12 +428,34 @@ export default function ServiceDetail() {
           </p>
           <Button
             className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-6 text-lg"
-            onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => setOpenModal(getModalForService(serviceKey) as any)}
           >
             {service.cta}
           </Button>
         </div>
       </div>
+
+      {/* Modals */}
+      <TechnicalSupportModal
+        isOpen={openModal === 'technical'}
+        onClose={() => setOpenModal(null)}
+      />
+      <EquipmentSalesModal
+        isOpen={openModal === 'equipment'}
+        onClose={() => setOpenModal(null)}
+      />
+      <ConsultingModal
+        isOpen={openModal === 'consulting'}
+        onClose={() => setOpenModal(null)}
+      />
+      <ProjectsModal
+        isOpen={openModal === 'projects'}
+        onClose={() => setOpenModal(null)}
+      />
+      <ManagementModal
+        isOpen={openModal === 'management'}
+        onClose={() => setOpenModal(null)}
+      />
     </div>
   );
 }

@@ -103,23 +103,13 @@ export default function Solutions() {
 
                   <p className="text-foreground/70 leading-relaxed text-sm flex-1">{solution.description}</p>
 
-                  {/* Buttons */}
-                  <div className="space-y-2 mt-3">
-                    <Button
-                      className="w-full bg-black hover:bg-gray-800 text-white font-semibold text-sm py-2"
-                      onClick={() => setLocation(solution.path)}
-                    >
-                      Conhecer
-                    </Button>
-                    {solution.modalKey && (
-                      <Button
-                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold text-sm py-2"
-                        onClick={() => setOpenModal(solution.modalKey as 'technical' | 'equipment' | 'consulting')}
-                      >
-                        Solicitar Orçamento
-                      </Button>
-                    )}
-                  </div>
+                  {/* Button */}
+                  <Button
+                    className="w-full bg-black hover:bg-gray-800 text-white font-semibold mt-3 text-sm py-2"
+                    onClick={() => setLocation(solution.path)}
+                  >
+                    Conhecer
+                  </Button>
                 </div>
               </div>
             );
