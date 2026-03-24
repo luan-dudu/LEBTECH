@@ -1,6 +1,8 @@
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, Lock } from 'lucide-react';
+import { useLocation } from 'wouter';
 
 export default function Footer() {
+  const [, setLocation] = useLocation();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -77,6 +79,19 @@ export default function Footer() {
                 São Paulo, SP
               </li>
             </ul>
+          </div>
+        </div>
+
+        {/* Admin Button */}
+        <div className="border-t border-border/50 py-6 mb-6">
+          <div className="flex justify-center">
+            <button
+              onClick={() => setLocation('/admin/login')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 border border-slate-600/50 transition-all text-sm"
+            >
+              <Lock size={16} />
+              Acesso Admin
+            </button>
           </div>
         </div>
 
