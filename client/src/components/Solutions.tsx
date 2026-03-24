@@ -5,12 +5,10 @@ import { Wrench, Package, Lightbulb, Cog, BarChart3, ArrowRight } from 'lucide-r
 import TechnicalSupportModal from './TechnicalSupportModal';
 import EquipmentSalesModal from './EquipmentSalesModal';
 import ConsultingModal from './ConsultingModal';
-import ProjectsModal from './ProjectsModal';
-import ManagementModal from './ManagementModal';
 
 export default function Solutions() {
   const [, setLocation] = useLocation();
-  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | 'projects' | 'management' | null>(null);
+  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | null>(null);
 
   const solutions = [
     {
@@ -47,7 +45,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/tech-background-pattern-nbMFWsLn4cp8LrSB4sYcZv.webp',
       icon: Cog,
       path: '/servicos/projetos-ti',
-      modalKey: 'projects' as const,
+      modalKey: null,
     },
     {
       id: 5,
@@ -56,7 +54,7 @@ export default function Solutions() {
       image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/hero-tech-solutions-oH9Lk8G822ZHH4RzjAGPwg.webp',
       icon: BarChart3,
       path: '/servicos/gestao-ti',
-      modalKey: 'management' as const,
+      modalKey: null,
     },
   ];
 
@@ -103,23 +101,13 @@ export default function Solutions() {
 
                   <p className="text-foreground/70 leading-relaxed text-sm flex-1">{solution.description}</p>
 
-                  {/* Buttons */}
-                  <div className="space-y-2 mt-3">
-                    <Button
-                      className="w-full bg-black hover:bg-gray-800 text-white font-semibold text-sm py-2"
-                      onClick={() => setLocation(solution.path)}
-                    >
-                      Conhecer
-                    </Button>
-                    {solution.modalKey && (
-                      <Button
-                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold text-sm py-2"
-                        onClick={() => setOpenModal(solution.modalKey as 'technical' | 'equipment' | 'consulting')}
-                      >
-                        Solicitar Orçamento
-                      </Button>
-                    )}
-                  </div>
+                  {/* Button */}
+                  <Button
+                    className="w-full bg-black hover:bg-gray-800 text-white font-semibold mt-3 text-sm py-2"
+                    onClick={() => setLocation(solution.path)}
+                  >
+                    Conhecer
+                  </Button>
                 </div>
               </div>
             );
@@ -154,14 +142,6 @@ export default function Solutions() {
       />
       <ConsultingModal
         isOpen={openModal === 'consulting'}
-        onClose={() => setOpenModal(null)}
-      />
-      <ProjectsModal
-        isOpen={openModal === 'projects'}
-        onClose={() => setOpenModal(null)}
-      />
-      <ManagementModal
-        isOpen={openModal === 'management'}
         onClose={() => setOpenModal(null)}
       />
     </section>

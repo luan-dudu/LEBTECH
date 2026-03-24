@@ -335,6 +335,12 @@ export default function ServiceDetail() {
           </div>
           <div className="space-y-6">
             <p className="text-lg text-foreground/70 leading-relaxed">{service.description}</p>
+            <Button
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-6 text-lg"
+              onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              {service.cta}
+            </Button>
           </div>
         </div>
 
@@ -388,7 +394,21 @@ export default function ServiceDetail() {
           </div>
         </div>
 
-
+        {/* CTA */}
+        <div className="bg-gradient-to-r from-blue-500/20 to-purple-600/20 border border-blue-500/30 rounded-3xl p-12 text-center space-y-6">
+          <h3 className="text-3xl md:text-4xl font-bold text-foreground">
+            Pronto para começar?
+          </h3>
+          <p className="text-lg text-foreground/70 max-w-2xl mx-auto">
+            Entre em contato conosco e descubra como podemos ajudar sua empresa
+          </p>
+          <Button
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-8 py-6 text-lg"
+            onClick={() => document.getElementById('contato')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            {service.cta}
+          </Button>
+        </div>
       </div>
     </div>
   );
