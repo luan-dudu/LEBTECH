@@ -4,6 +4,7 @@ import { LogOut, Users, FileText, CheckCircle, Clock, AlertCircle, BarChart3, Ey
 import { toast } from 'sonner';
 import AdminUsersTab from '@/components/AdminUsersTab';
 import AdminSocialMediaTab from '@/components/AdminSocialMediaTab';
+import StatsCharts from '@/components/StatsCharts';
 
 interface FormSubmission {
   id: number;
@@ -253,6 +254,9 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Charts */}
+            <StatsCharts />
 
             {/* Filters */}
             <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 mb-8">
