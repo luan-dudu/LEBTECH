@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { trpc } from '@/lib/trpc';
 
 interface ConsultingModalProps {
   isOpen: boolean;
@@ -31,11 +32,25 @@ export default function ConsultingModal({ isOpen, onClose }: ConsultingModalProp
     }));
   };
 
+  const submitMutation = trpc.forms.submitConsulting.useMutation();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      await submitMutation.mutateAsync({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        consultingType: formData.consultingType,
+        currentChallenges: formData.currentChallenges,
+        objectives: formData.objectives,
+        teamSize: formData.teamSize,
+        budget: formData.budget,
+      });
+      
       toast.success('Solicitação de consultoria enviada! Agende uma reunião com nossos especialistas.');
       setFormData({
         name: '',
@@ -48,9 +63,13 @@ export default function ConsultingModal({ isOpen, onClose }: ConsultingModalProp
         teamSize: '',
         budget: '',
       });
-      setIsSubmitting(false);
       onClose();
-    }, 1000);
+    } catch (error) {
+      toast.error('Erro ao enviar solicitação. Tente novamente.');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -245,11 +264,11 @@ export default function ConsultingModal({ isOpen, onClose }: ConsultingModalProp
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || submitMutation.isPending}
               className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              {isSubmitting ? 'Enviando...' : 'Agendar Consultoria'}
-              {!isSubmitting && <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
+              {isSubmitting || submitMutation.isPending ? 'Enviando...' : 'Solicitar Consultoria'}
+              {!isSubmitting && !submitMutation.isPending && <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
             </Button>
           </div>
         </form>
