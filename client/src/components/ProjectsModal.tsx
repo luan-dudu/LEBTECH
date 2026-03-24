@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ProjectsModalProps {
   isOpen: boolean;
@@ -18,208 +15,229 @@ export default function ProjectsModal({ isOpen, onClose }: ProjectsModalProps) {
     name: '',
     email: '',
     phone: '',
-    projectType: '',
-    timeline: '',
-    budget: '',
+    company: '',
+    projectType: 'development',
+    timeline: 'short',
+    budget: '15k',
     description: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    try {
-      // Simular envio do formulário
-      console.log('Formulário de Projetos de TI enviado:', formData);
-      
-      // Aqui você pode adicionar a chamada à API
-      // await trpc.forms.submitProjectsRequest.mutate(formData);
-
-      // Limpar formulário e fechar modal
+    setTimeout(() => {
+      toast.success('Solicitação de projeto enviada! Entraremos em contato em breve.');
       setFormData({
         name: '',
         email: '',
         phone: '',
-        projectType: '',
-        timeline: '',
-        budget: '',
+        company: '',
+        projectType: 'development',
+        timeline: 'short',
+        budget: '15k',
         description: '',
       });
-      onClose();
-    } catch (error) {
-      console.error('Erro ao enviar formulário:', error);
-    } finally {
       setIsSubmitting(false);
-    }
+      onClose();
+    }, 1000);
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">
-            Solicitar Orçamento - Projetos de TI
-          </DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-card border-b border-border flex items-center justify-between p-6">
+          <h2 className="text-2xl font-bold text-foreground">Solicitação de Projetos de TI</h2>
+          <button
+            onClick={onClose}
+            className="text-foreground/60 hover:text-foreground transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Informações Pessoais */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Informações de Contato</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Nome Completo *
-                </label>
-                <Input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Seu nome"
-                  required
-                  className="bg-background border-border"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Email *
-                </label>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="seu@email.com"
-                  required
-                  className="bg-background border-border"
-                />
-              </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Name and Email */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="name" className="block text-sm font-semibold text-foreground">
+                Nome Completo *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="Seu nome"
+              />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-foreground">
+                Email *
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="seu@email.com"
+              />
+            </div>
+          </div>
+
+          {/* Phone and Company */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="phone" className="block text-sm font-semibold text-foreground">
                 Telefone *
               </label>
-              <Input
+              <input
                 type="tel"
+                id="phone"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="(11) 99999-9999"
                 required
-                className="bg-background border-border"
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="(11) 9999-9999"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="company" className="block text-sm font-semibold text-foreground">
+                Empresa
+              </label>
+              <input
+                type="text"
+                id="company"
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="Sua empresa"
               />
             </div>
           </div>
 
-          {/* Detalhes do Projeto */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Detalhes do Projeto</h3>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+          {/* Project Type and Timeline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="projectType" className="block text-sm font-semibold text-foreground">
                 Tipo de Projeto *
               </label>
-              <Select value={formData.projectType} onValueChange={(value) => handleSelectChange('projectType', value)}>
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue placeholder="Selecione o tipo de projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="development">Desenvolvimento de Software</SelectItem>
-                  <SelectItem value="infrastructure">Infraestrutura</SelectItem>
-                  <SelectItem value="integration">Integração de Sistemas</SelectItem>
-                  <SelectItem value="migration">Migração de Dados</SelectItem>
-                  <SelectItem value="other">Outro</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Prazo Estimado *
-                </label>
-                <Select value={formData.timeline} onValueChange={(value) => handleSelectChange('timeline', value)}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="Selecione o prazo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="urgent">Urgente (até 1 mês)</SelectItem>
-                    <SelectItem value="short">Curto Prazo (1-3 meses)</SelectItem>
-                    <SelectItem value="medium">Médio Prazo (3-6 meses)</SelectItem>
-                    <SelectItem value="long">Longo Prazo (6+ meses)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Orçamento Disponível *
-                </label>
-                <Select value={formData.budget} onValueChange={(value) => handleSelectChange('budget', value)}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="Selecione a faixa de orçamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5k">Até R$ 5 mil</SelectItem>
-                    <SelectItem value="15k">R$ 5 mil - R$ 15 mil</SelectItem>
-                    <SelectItem value="50k">R$ 15 mil - R$ 50 mil</SelectItem>
-                    <SelectItem value="100k">R$ 50 mil - R$ 100 mil</SelectItem>
-                    <SelectItem value="above">Acima de R$ 100 mil</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Descrição do Projeto *
-              </label>
-              <Textarea
-                name="description"
-                value={formData.description}
+              <select
+                id="projectType"
+                name="projectType"
+                value={formData.projectType}
                 onChange={handleChange}
-                placeholder="Descreva os objetivos, requisitos e escopo do projeto..."
-                required
-                className="bg-background border-border min-h-32"
-              />
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+              >
+                <option value="development">Desenvolvimento de Software</option>
+                <option value="infrastructure">Infraestrutura</option>
+                <option value="integration">Integração de Sistemas</option>
+                <option value="migration">Migração de Dados</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="timeline" className="block text-sm font-semibold text-foreground">
+                Prazo Estimado *
+              </label>
+              <select
+                id="timeline"
+                name="timeline"
+                value={formData.timeline}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+              >
+                <option value="urgent">Urgente (até 1 mês)</option>
+                <option value="short">Curto Prazo (1-3 meses)</option>
+                <option value="medium">Médio Prazo (3-6 meses)</option>
+                <option value="long">Longo Prazo (6+ meses)</option>
+              </select>
             </div>
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-3 justify-end pt-6 border-t border-border">
+          {/* Budget */}
+          <div className="space-y-2">
+            <label htmlFor="budget" className="block text-sm font-semibold text-foreground">
+              Orçamento Disponível *
+            </label>
+            <select
+              id="budget"
+              name="budget"
+              value={formData.budget}
+              onChange={handleChange}
+              className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+            >
+              <option value="5k">Até R$ 5 mil</option>
+              <option value="15k">R$ 5 mil - R$ 15 mil</option>
+              <option value="50k">R$ 15 mil - R$ 50 mil</option>
+              <option value="100k">R$ 50 mil - R$ 100 mil</option>
+              <option value="above">Acima de R$ 100 mil</option>
+            </select>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <label htmlFor="description" className="block text-sm font-semibold text-foreground">
+              Descrição do Projeto *
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              required
+              rows={6}
+              className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
+              placeholder="Descreva os objetivos, requisitos e escopo do projeto..."
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-4 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
+              className="flex-1"
               onClick={onClose}
-              className="border-border hover:bg-card"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              {isSubmitting ? 'Enviando...' : 'Solicitar Orçamento'}
+              {isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
+              {!isSubmitting && <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

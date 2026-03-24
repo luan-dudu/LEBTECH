@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface ManagementModalProps {
   isOpen: boolean;
@@ -17,200 +15,229 @@ export default function ManagementModal({ isOpen, onClose }: ManagementModalProp
     name: '',
     email: '',
     phone: '',
-    managementType: '',
-    userCount: '',
-    infrastructure: '',
+    company: '',
+    managementType: 'full',
+    userCount: '1-10',
+    infrastructure: 'on-premises',
     challenges: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    try {
-      console.log('Formulário de Gestão de TI enviado:', formData);
-      
+    setTimeout(() => {
+      toast.success('Solicitação de gestão de TI enviada! Entraremos em contato em breve.');
       setFormData({
         name: '',
         email: '',
         phone: '',
-        managementType: '',
-        userCount: '',
-        infrastructure: '',
+        company: '',
+        managementType: 'full',
+        userCount: '1-10',
+        infrastructure: 'on-premises',
         challenges: '',
       });
-      onClose();
-    } catch (error) {
-      console.error('Erro ao enviar formulário:', error);
-    } finally {
       setIsSubmitting(false);
-    }
+      onClose();
+    }, 1000);
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">
-            Solicitar Orçamento - Gestão de TI
-          </DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-card border-b border-border flex items-center justify-between p-6">
+          <h2 className="text-2xl font-bold text-foreground">Solicitação de Gestão de TI</h2>
+          <button
+            onClick={onClose}
+            className="text-foreground/60 hover:text-foreground transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Informações de Contato</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Nome Completo *
-                </label>
-                <Input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Seu nome"
-                  required
-                  className="bg-background border-border"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Email *
-                </label>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="seu@email.com"
-                  required
-                  className="bg-background border-border"
-                />
-              </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Name and Email */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="name" className="block text-sm font-semibold text-foreground">
+                Nome Completo *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="Seu nome"
+              />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-foreground">
+                Email *
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="seu@email.com"
+              />
+            </div>
+          </div>
+
+          {/* Phone and Company */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="phone" className="block text-sm font-semibold text-foreground">
                 Telefone *
               </label>
-              <Input
+              <input
                 type="tel"
+                id="phone"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="(11) 99999-9999"
                 required
-                className="bg-background border-border"
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="(11) 9999-9999"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="company" className="block text-sm font-semibold text-foreground">
+                Empresa
+              </label>
+              <input
+                type="text"
+                id="company"
+                name="company"
+                value={formData.company}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="Sua empresa"
               />
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Detalhes da Gestão</h3>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+          {/* Management Type and User Count */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="managementType" className="block text-sm font-semibold text-foreground">
                 Tipo de Gestão Desejada *
               </label>
-              <Select value={formData.managementType} onValueChange={(value) => handleSelectChange('managementType', value)}>
-                <SelectTrigger className="bg-background border-border">
-                  <SelectValue placeholder="Selecione o tipo de gestão" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full">Gestão Completa</SelectItem>
-                  <SelectItem value="partial">Gestão Parcial</SelectItem>
-                  <SelectItem value="helpdesk">Help Desk</SelectItem>
-                  <SelectItem value="monitoring">Monitoramento</SelectItem>
-                  <SelectItem value="support">Suporte Técnico</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Número de Usuários *
-                </label>
-                <Select value={formData.userCount} onValueChange={(value) => handleSelectChange('userCount', value)}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="Selecione a quantidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1-10">1 a 10 usuários</SelectItem>
-                    <SelectItem value="11-50">11 a 50 usuários</SelectItem>
-                    <SelectItem value="51-100">51 a 100 usuários</SelectItem>
-                    <SelectItem value="101-500">101 a 500 usuários</SelectItem>
-                    <SelectItem value="500+">500+ usuários</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Infraestrutura Atual *
-                </label>
-                <Select value={formData.infrastructure} onValueChange={(value) => handleSelectChange('infrastructure', value)}>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="Selecione a infraestrutura" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="on-premises">On-Premises</SelectItem>
-                    <SelectItem value="cloud">Cloud</SelectItem>
-                    <SelectItem value="hybrid">Híbrida</SelectItem>
-                    <SelectItem value="mixed">Mista</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Principais Desafios e Necessidades *
-              </label>
-              <Textarea
-                name="challenges"
-                value={formData.challenges}
+              <select
+                id="managementType"
+                name="managementType"
+                value={formData.managementType}
                 onChange={handleChange}
-                placeholder="Descreva os principais desafios de TI, necessidades de suporte e objetivos..."
-                required
-                className="bg-background border-border min-h-32"
-              />
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+              >
+                <option value="full">Gestão Completa</option>
+                <option value="partial">Gestão Parcial</option>
+                <option value="helpdesk">Help Desk</option>
+                <option value="monitoring">Monitoramento</option>
+                <option value="support">Suporte Técnico</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="userCount" className="block text-sm font-semibold text-foreground">
+                Número de Usuários *
+              </label>
+              <select
+                id="userCount"
+                name="userCount"
+                value={formData.userCount}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+              >
+                <option value="1-10">1 a 10 usuários</option>
+                <option value="11-50">11 a 50 usuários</option>
+                <option value="51-100">51 a 100 usuários</option>
+                <option value="101-500">101 a 500 usuários</option>
+                <option value="500+">500+ usuários</option>
+              </select>
             </div>
           </div>
 
-          <div className="flex gap-3 justify-end pt-6 border-t border-border">
+          {/* Infrastructure */}
+          <div className="space-y-2">
+            <label htmlFor="infrastructure" className="block text-sm font-semibold text-foreground">
+              Infraestrutura Atual *
+            </label>
+            <select
+              id="infrastructure"
+              name="infrastructure"
+              value={formData.infrastructure}
+              onChange={handleChange}
+              className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+            >
+              <option value="on-premises">On-Premises</option>
+              <option value="cloud">Cloud</option>
+              <option value="hybrid">Híbrida</option>
+              <option value="mixed">Mista</option>
+            </select>
+          </div>
+
+          {/* Challenges */}
+          <div className="space-y-2">
+            <label htmlFor="challenges" className="block text-sm font-semibold text-foreground">
+              Principais Desafios e Necessidades *
+            </label>
+            <textarea
+              id="challenges"
+              name="challenges"
+              value={formData.challenges}
+              onChange={handleChange}
+              required
+              rows={6}
+              className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
+              placeholder="Descreva os principais desafios de TI, necessidades de suporte e objetivos..."
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-4 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
+              className="flex-1"
               onClick={onClose}
-              className="border-border hover:bg-card"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              {isSubmitting ? 'Enviando...' : 'Solicitar Orçamento'}
+              {isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
+              {!isSubmitting && <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
