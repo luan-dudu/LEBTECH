@@ -3,22 +3,22 @@ import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-interface EquipmentSalesModalProps {
+interface ProjectsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesModalProps) {
+export default function ProjectsModal({ isOpen, onClose }: ProjectsModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     company: '',
-    equipmentType: 'computers',
-    quantity: '',
-    specifications: '',
+    projectType: 'custom-development',
+    projectDescription: '',
+    timeline: 'flexible',
     budget: '',
-    timeline: 'asap',
+    teamSize: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,17 +36,17 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
     setIsSubmitting(true);
 
     setTimeout(() => {
-      toast.success('Solicitação de orçamento enviada! Retornaremos com uma proposta em breve.');
+      toast.success('Solicitação de projeto enviada! Entraremos em contato em breve.');
       setFormData({
         name: '',
         email: '',
         phone: '',
         company: '',
-        equipmentType: 'computers',
-        quantity: '',
-        specifications: '',
+        projectType: 'custom-development',
+        projectDescription: '',
+        timeline: 'flexible',
         budget: '',
-        timeline: 'asap',
+        teamSize: '',
       });
       setIsSubmitting(false);
       onClose();
@@ -60,7 +60,7 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
       <div className="bg-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border flex items-center justify-between p-6">
-          <h2 className="text-2xl font-bold text-foreground">Solicitação de Orçamento - Equipamentos</h2>
+          <h2 className="text-2xl font-bold text-foreground">Solicitação de Projeto de TI</h2>
           <button
             onClick={onClose}
             className="text-foreground/60 hover:text-foreground transition-colors"
@@ -126,7 +126,7 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
 
             <div className="space-y-2">
               <label htmlFor="company" className="block text-sm font-semibold text-foreground">
-                Empresa *
+                Empresa
               </label>
               <input
                 type="text"
@@ -134,55 +134,55 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
                 name="company"
                 value={formData.company}
                 onChange={handleChange}
-                required
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
                 placeholder="Sua empresa"
               />
             </div>
           </div>
 
-          {/* Equipment Type and Quantity */}
+          {/* Project Type and Timeline */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="equipmentType" className="block text-sm font-semibold text-foreground">
-                Tipo de Equipamento *
+              <label htmlFor="projectType" className="block text-sm font-semibold text-foreground">
+                Tipo de Projeto *
               </label>
               <select
-                id="equipmentType"
-                name="equipmentType"
-                value={formData.equipmentType}
+                id="projectType"
+                name="projectType"
+                value={formData.projectType}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
               >
-                <option value="computers">Computadores</option>
-                <option value="servers">Servidores</option>
-                <option value="monitors">Monitores</option>
-                <option value="peripherals">Periféricos</option>
-                <option value="network">Equipamentos de Rede</option>
-                <option value="storage">Armazenamento</option>
+                <option value="custom-development">Desenvolvimento Customizado</option>
+                <option value="web-application">Aplicação Web</option>
+                <option value="mobile-app">Aplicativo Mobile</option>
+                <option value="integration">Integração de Sistemas</option>
+                <option value="migration">Migração de Dados</option>
                 <option value="other">Outro</option>
               </select>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="quantity" className="block text-sm font-semibold text-foreground">
-                Quantidade *
+              <label htmlFor="timeline" className="block text-sm font-semibold text-foreground">
+                Prazo Desejado *
               </label>
-              <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={formData.quantity}
+              <select
+                id="timeline"
+                name="timeline"
+                value={formData.timeline}
                 onChange={handleChange}
-                required
-                min="1"
-                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
-                placeholder="Ex: 5"
-              />
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+              >
+                <option value="urgent">Urgente (até 1 mês)</option>
+                <option value="short">Curto prazo (1-3 meses)</option>
+                <option value="medium">Médio prazo (3-6 meses)</option>
+                <option value="long">Longo prazo (6+ meses)</option>
+                <option value="flexible">Flexível</option>
+              </select>
             </div>
           </div>
 
-          {/* Budget and Timeline */}
+          {/* Budget and Team Size */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="budget" className="block text-sm font-semibold text-foreground">
@@ -195,44 +195,40 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
                 value={formData.budget}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
-                placeholder="Ex: R$ 50.000"
+                placeholder="Ex: R$ 50.000 - R$ 100.000"
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="timeline" className="block text-sm font-semibold text-foreground">
-                Prazo de Entrega *
+              <label htmlFor="teamSize" className="block text-sm font-semibold text-foreground">
+                Tamanho do Time de Projeto
               </label>
-              <select
-                id="timeline"
-                name="timeline"
-                value={formData.timeline}
+              <input
+                type="text"
+                id="teamSize"
+                name="teamSize"
+                value={formData.teamSize}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
-              >
-                <option value="asap">O mais rápido possível</option>
-                <option value="1week">Até 1 semana</option>
-                <option value="2weeks">Até 2 semanas</option>
-                <option value="1month">Até 1 mês</option>
-                <option value="flexible">Flexível</option>
-              </select>
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="Ex: 3-5 pessoas"
+              />
             </div>
           </div>
 
-          {/* Specifications */}
+          {/* Project Description */}
           <div className="space-y-2">
-            <label htmlFor="specifications" className="block text-sm font-semibold text-foreground">
-              Especificações e Detalhes *
+            <label htmlFor="projectDescription" className="block text-sm font-semibold text-foreground">
+              Descrição do Projeto *
             </label>
             <textarea
-              id="specifications"
-              name="specifications"
-              value={formData.specifications}
+              id="projectDescription"
+              name="projectDescription"
+              value={formData.projectDescription}
               onChange={handleChange}
               required
               rows={6}
               className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
-              placeholder="Descreva os equipamentos que deseja comprar, especificações técnicas desejadas, marcas preferidas, etc..."
+              placeholder="Descreva detalhadamente o projeto que você precisa desenvolver, seus objetivos, funcionalidades principais e requisitos..."
             />
           </div>
 
@@ -251,7 +247,7 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
               disabled={isSubmitting}
               className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              {isSubmitting ? 'Enviando...' : 'Solicitar Orçamento'}
+              {isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
               {!isSubmitting && <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
             </Button>
           </div>

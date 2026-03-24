@@ -3,22 +3,23 @@ import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
-interface EquipmentSalesModalProps {
+interface ManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesModalProps) {
+export default function ManagementModal({ isOpen, onClose }: ManagementModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     company: '',
-    equipmentType: 'computers',
-    quantity: '',
-    specifications: '',
+    currentInfrastructure: '',
+    managementNeeds: 'monitoring',
+    numberOfUsers: '',
+    currentChallenges: '',
     budget: '',
-    timeline: 'asap',
+    startDate: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,17 +37,18 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
     setIsSubmitting(true);
 
     setTimeout(() => {
-      toast.success('Solicitação de orçamento enviada! Retornaremos com uma proposta em breve.');
+      toast.success('Solicitação de gestão de TI enviada! Entraremos em contato em breve.');
       setFormData({
         name: '',
         email: '',
         phone: '',
         company: '',
-        equipmentType: 'computers',
-        quantity: '',
-        specifications: '',
+        currentInfrastructure: '',
+        managementNeeds: 'monitoring',
+        numberOfUsers: '',
+        currentChallenges: '',
         budget: '',
-        timeline: 'asap',
+        startDate: '',
       });
       setIsSubmitting(false);
       onClose();
@@ -60,7 +62,7 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
       <div className="bg-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-border flex items-center justify-between p-6">
-          <h2 className="text-2xl font-bold text-foreground">Solicitação de Orçamento - Equipamentos</h2>
+          <h2 className="text-2xl font-bold text-foreground">Solicitação de Gestão de TI</h2>
           <button
             onClick={onClose}
             className="text-foreground/60 hover:text-foreground transition-colors"
@@ -126,7 +128,7 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
 
             <div className="space-y-2">
               <label htmlFor="company" className="block text-sm font-semibold text-foreground">
-                Empresa *
+                Empresa
               </label>
               <input
                 type="text"
@@ -134,59 +136,70 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
                 name="company"
                 value={formData.company}
                 onChange={handleChange}
-                required
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
                 placeholder="Sua empresa"
               />
             </div>
           </div>
 
-          {/* Equipment Type and Quantity */}
+          {/* Management Needs and Number of Users */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="equipmentType" className="block text-sm font-semibold text-foreground">
-                Tipo de Equipamento *
+              <label htmlFor="managementNeeds" className="block text-sm font-semibold text-foreground">
+                Tipo de Gestão Necessária *
               </label>
               <select
-                id="equipmentType"
-                name="equipmentType"
-                value={formData.equipmentType}
+                id="managementNeeds"
+                name="managementNeeds"
+                value={formData.managementNeeds}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
               >
-                <option value="computers">Computadores</option>
-                <option value="servers">Servidores</option>
-                <option value="monitors">Monitores</option>
-                <option value="peripherals">Periféricos</option>
-                <option value="network">Equipamentos de Rede</option>
-                <option value="storage">Armazenamento</option>
-                <option value="other">Outro</option>
+                <option value="monitoring">Monitoramento 24/7</option>
+                <option value="helpdesk">Help Desk</option>
+                <option value="servicedesk">Service Desk Completo</option>
+                <option value="infrastructure">Gestão de Infraestrutura</option>
+                <option value="security">Gestão de Segurança</option>
+                <option value="complete">Gestão Completa de TI</option>
               </select>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="quantity" className="block text-sm font-semibold text-foreground">
-                Quantidade *
+              <label htmlFor="numberOfUsers" className="block text-sm font-semibold text-foreground">
+                Número de Usuários/Dispositivos
               </label>
               <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={formData.quantity}
+                type="text"
+                id="numberOfUsers"
+                name="numberOfUsers"
+                value={formData.numberOfUsers}
                 onChange={handleChange}
-                required
-                min="1"
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
-                placeholder="Ex: 5"
+                placeholder="Ex: 50-100 usuários"
               />
             </div>
           </div>
 
-          {/* Budget and Timeline */}
+          {/* Current Infrastructure and Budget */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <label htmlFor="currentInfrastructure" className="block text-sm font-semibold text-foreground">
+                Infraestrutura Atual
+              </label>
+              <input
+                type="text"
+                id="currentInfrastructure"
+                name="currentInfrastructure"
+                value={formData.currentInfrastructure}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
+                placeholder="Ex: On-premise, Cloud, Híbrida"
+              />
+            </div>
+
+            <div className="space-y-2">
               <label htmlFor="budget" className="block text-sm font-semibold text-foreground">
-                Orçamento Estimado
+                Orçamento Mensal
               </label>
               <input
                 type="text"
@@ -195,44 +208,40 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
                 value={formData.budget}
                 onChange={handleChange}
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40"
-                placeholder="Ex: R$ 50.000"
+                placeholder="Ex: R$ 5.000 - R$ 10.000"
               />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="timeline" className="block text-sm font-semibold text-foreground">
-                Prazo de Entrega *
-              </label>
-              <select
-                id="timeline"
-                name="timeline"
-                value={formData.timeline}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
-              >
-                <option value="asap">O mais rápido possível</option>
-                <option value="1week">Até 1 semana</option>
-                <option value="2weeks">Até 2 semanas</option>
-                <option value="1month">Até 1 mês</option>
-                <option value="flexible">Flexível</option>
-              </select>
             </div>
           </div>
 
-          {/* Specifications */}
+          {/* Start Date */}
           <div className="space-y-2">
-            <label htmlFor="specifications" className="block text-sm font-semibold text-foreground">
-              Especificações e Detalhes *
+            <label htmlFor="startDate" className="block text-sm font-semibold text-foreground">
+              Data de Início Desejada
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              name="startDate"
+              value={formData.startDate}
+              onChange={handleChange}
+              className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground"
+            />
+          </div>
+
+          {/* Current Challenges */}
+          <div className="space-y-2">
+            <label htmlFor="currentChallenges" className="block text-sm font-semibold text-foreground">
+              Desafios Atuais de TI *
             </label>
             <textarea
-              id="specifications"
-              name="specifications"
-              value={formData.specifications}
+              id="currentChallenges"
+              name="currentChallenges"
+              value={formData.currentChallenges}
               onChange={handleChange}
               required
               rows={6}
               className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
-              placeholder="Descreva os equipamentos que deseja comprar, especificações técnicas desejadas, marcas preferidas, etc..."
+              placeholder="Descreva os principais desafios e problemas que sua empresa enfrenta com TI, como downtime, segurança, performance, etc..."
             />
           </div>
 
@@ -251,7 +260,7 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
               disabled={isSubmitting}
               className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              {isSubmitting ? 'Enviando...' : 'Solicitar Orçamento'}
+              {isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
               {!isSubmitting && <Send className="ml-2 group-hover:translate-x-1 transition-transform" size={18} />}
             </Button>
           </div>
