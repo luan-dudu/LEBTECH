@@ -5,12 +5,11 @@ import { Wrench, Package, Lightbulb, Cog, BarChart3, ArrowRight } from 'lucide-r
 import TechnicalSupportModal from './TechnicalSupportModal';
 import EquipmentSalesModal from './EquipmentSalesModal';
 import ConsultingModal from './ConsultingModal';
-import ProjectsModal from './ProjectsModal';
-import ManagementModal from './ManagementModal';
+
 
 export default function Solutions() {
   const [, setLocation] = useLocation();
-  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | 'projects' | 'management' | null>(null);
+  const [openModal, setOpenModal] = useState<'technical' | 'equipment' | 'consulting' | null>(null);
 
   const solutions = [
     {
@@ -156,14 +155,7 @@ export default function Solutions() {
         isOpen={openModal === 'consulting'}
         onClose={() => setOpenModal(null)}
       />
-      <ProjectsModal
-        isOpen={openModal === 'projects'}
-        onClose={() => setOpenModal(null)}
-      />
-      <ManagementModal
-        isOpen={openModal === 'management'}
-        onClose={() => setOpenModal(null)}
-      />
+
     </section>
   );
 }
