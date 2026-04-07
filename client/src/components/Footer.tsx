@@ -12,9 +12,12 @@ export default function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">LT</span>
-              </div>
+              <div className="flex items-center gap-2">
+              <img 
+              src="../public/images/logo.png" 
+              alt="LEB TECH Logo"
+              className="h-10 w-auto"/>
+            </div>
               <span className="text-lg font-bold text-foreground">LEB TECH</span>
             </div>
             <p className="text-foreground/60 text-sm">
@@ -68,15 +71,15 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2 text-foreground/60">
                 <Mail size={16} className="text-blue-400" />
-                contato@lebtech.com.br
+                lebtech.co@gmail.com
               </li>
               <li className="flex items-center gap-2 text-foreground/60">
                 <Phone size={16} className="text-purple-400" />
-                (11) 3000-0000
+                (12) 988176687
               </li>
               <li className="flex items-center gap-2 text-foreground/60">
                 <MapPin size={16} className="text-blue-400" />
-                São Paulo, SP
+                Pouso Alegre, MG
               </li>
             </ul>
           </div>
@@ -98,7 +101,7 @@ export default function Footer() {
         {/* Divider */}
         <div className="border-t border-border/50 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between text-sm text-foreground/60">
-            <p>&copy; {currentYear} LEB TECH. Todos os direitos reservados.</p>
+            <p>&copy; {currentYear} LEB Company. Todos os direitos reservados.</p>
             <div className="flex gap-6 mt-4 md:mt-0">
               <a href="#" className="hover:text-blue-400 transition-colors">
                 Privacidade

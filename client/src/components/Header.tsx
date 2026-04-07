@@ -16,11 +16,14 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-lg">LT</span>
-          </div>
+        <img 
+          src="../public/images/logo.png" 
+           alt="LEB TECH Logo"
+           className="h-10 w-auto"
+         />
           <span className="text-xl font-bold text-foreground hidden sm:inline">LEB TECH</span>
         </div>
+
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">

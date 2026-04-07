@@ -108,7 +108,11 @@ export default function Solutions() {
                   <div className="space-y-2 mt-3">
                     <Button
                       className="w-full bg-black hover:bg-gray-800 text-white font-semibold text-sm py-2"
-                      onClick={() => setLocation(solution.path)}
+                      onClick={() => {
+                      setLocation(solution.path);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                     }}
+
                     >
                       Conhecer
                     </Button>

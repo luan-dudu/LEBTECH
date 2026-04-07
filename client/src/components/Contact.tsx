@@ -64,7 +64,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-foreground mb-1">Email</h3>
-                  <p className="text-foreground/60">contato@lebtech.com.br</p>
+                  <p className="text-foreground/60">lebtech.co@gmail.com</p>
                 </div>
               </div>
             </div>
@@ -77,7 +77,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-foreground mb-1">Telefone</h3>
-                  <p className="text-foreground/60">(11) 3000-0000</p>
+                  <p className="text-foreground/60">(12) 98817-6687</p>
                 </div>
               </div>
             </div>
@@ -90,7 +90,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h3 className="font-bold text-foreground mb-1">Endereço</h3>
-                  <p className="text-foreground/60">São Paulo, SP - Brasil</p>
+                  <p className="text-foreground/60">Pouso Alegre, MG - Brasil</p>
                 </div>
               </div>
             </div>

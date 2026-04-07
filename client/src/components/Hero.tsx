@@ -56,11 +56,11 @@ export default function Hero() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-6 pt-8 border-t border-border/50">
               <div>
-                <p className="text-2xl font-bold text-blue-400">500+</p>
+                <p className="text-2xl font-bold text-blue-400">+500</p>
                 <p className="text-foreground/60 text-sm">Clientes Satisfeitos</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-400">20+</p>
+                <p className="text-2xl font-bold text-purple-400">+10</p>
                 <p className="text-foreground/60 text-sm">Anos de Experiência</p>
               </div>
               <div>

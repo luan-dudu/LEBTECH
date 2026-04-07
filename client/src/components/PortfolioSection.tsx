@@ -205,15 +205,15 @@ export default function PortfolioSection() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 pt-20 border-t border-border/30">
           <div className="text-center">
-            <p className="text-4xl font-bold text-blue-400 mb-2">50+</p>
+            <p className="text-4xl font-bold text-blue-400 mb-2">+50</p>
             <p className="text-foreground/70">Projetos Realizados</p>
           </div>
           <div className="text-center">
-            <p className="text-4xl font-bold text-blue-400 mb-2">100+</p>
+            <p className="text-4xl font-bold text-blue-400 mb-2">+100</p>
             <p className="text-foreground/70">Clientes Satisfeitos</p>
           </div>
           <div className="text-center">
-            <p className="text-4xl font-bold text-blue-400 mb-2">R$ 50M+</p>
+            <p className="text-4xl font-bold text-blue-400 mb-2">+ R$ 50 Mil</p>
             <p className="text-foreground/70">Investimento em Projetos</p>
           </div>
         </div>
