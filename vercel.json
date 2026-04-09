@@ -1,16 +1,11 @@
 {
   "buildCommand": "pnpm build",
-  "devCommand": "pnpm dev",
   "installCommand": "pnpm install",
   "framework": null,
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/dist/index.js"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/client/dist/index.html"
+      "destination": "/api"
     }
   ]
 }
