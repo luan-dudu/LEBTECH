@@ -67,7 +67,7 @@ Realize a migração do banco de dados
 
 Bash
 
-pnpm drizzle-kit push
+npm drizzle-kit push
 
 
 5.
