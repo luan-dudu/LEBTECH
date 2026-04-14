@@ -1,11 +1,10 @@
-import pkg from 'pg';
-const { Client } = pkg;
+const { Client } = require('pg');
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
 });
 
-async function test() {
+(async () => {
   try {
     await client.connect();
     console.log("🔥 Conectado ao Neon com sucesso!");
@@ -14,6 +13,4 @@ async function test() {
     console.error("❌ Erro:", err);
     process.exit(1);
   }
-}
-
-test();
+})();
