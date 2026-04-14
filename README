@@ -1,0 +1,100 @@
+**Projeto LEB TECH - Soluções em Tecnologia**
+
+Este é um sistema institucional e de gestão para a LEB TECH, uma empresa especializada em serviços de TI. O projeto oferece uma interface moderna para clientes conhecerem soluções tecnológicas e solicitarem orçamentos, além de um painel administrativo para gestão de solicitações e usuários.
+
+Funcionalidades
+
+• Catálogo de Serviços: Apresentação detalhada de soluções como Assistência Técnica, Venda de Equipamentos, Consultoria, Projetos e Gestão de TI.
+• Solicitação de Orçamentos: Formulários específicos para cada tipo de serviço, permitindo que clientes enviem detalhes técnicos e necessidades de negócio.
+• Painel Administrativo: Área restrita para gestão de leads, onde administradores podem visualizar, filtrar e atualizar o status das solicitações recebidas.
+• Gestão de Usuários: Interface para controle de acessos e perfis de usuários do sistema (Admin, Gerente e Usuário).
+• Dashboard de Indicadores: Visualização de estatísticas e métricas de atendimento através de gráficos dinâmicos.
+
+Tecnologias Utilizadas
+
+Frontend:
+
+• React 19
+• Vite para build e desenvolvimento
+• TailwindCSS 4 para estilização moderna e responsiva
+• TypeScript para tipagem estática
+• Framer Motion para animações fluidas
+• Shadcn/ui para componentes de interface
+• Lucide React para iconografia
+• Wouter para roteamento leve e eficiente
+• Sonner para notificações (toast)
+• Recharts para visualização de dados
+
+Backend:
+
+• Node.js com Express para servir a aplicação
+• Drizzle ORM para interação com o banco de dados (MySQL/TiDB)
+• TypeScript para desenvolvimento do servidor
+• Zod para validação de esquemas e dados
+
+Instalação
+
+Requisitos
+•Node.js >= 20.x.x
+• npm (recomendado) ou npm para gerenciamento de pacotes
+• Banco de dados PostgreSQL ou compatível
+
+Passos para Inicialização
+
+1.
+Clone o repositório
+
+Bash
+
+git clone https://github.com/usuario/lebtech-site.git
+cd lebtech-site
+
+2.
+Instale as dependências
+
+Bash
+
+npm install
+
+3.
+Crie um arquivo de configuração (.env ) e adicione a configuração para o banco de dados
+Plain Text
+
+DATABASE_URL="PostgreSQl://usuario:senha@host:port/database"
+
+4.
+Realize a migração do banco de dados
+
+Bash
+
+npm drizzle-kit push
+
+
+5.
+Inicie o servidor de desenvolvimento
+
+Bash
+
+npm run dev
+
+Estrutura do Projeto
+
+• client/: Contém todo o código do frontend React.
+• client/src/pages/: Páginas principais como Home, AdminDashboard e ServiceDetail.
+• client/src/components/: Componentes reutilizáveis e seções da interface.
+• server/: Contém o código do servidor Express.
+• server/index.ts: Ponto de entrada do servidor e configuração de rotas estáticas.
+• shared/: Código compartilhado entre frontend e backend (constantes, tipos).
+• drizzle/: Contém os arquivos de esquema e migrações do banco de dados gerados pelo Drizzle ORM.
+
+Documentação e Acesso
+
+Para acessar as áreas do projeto após iniciar o servidor:
+
+• Home/Site:http://10.32.195.48:3000/
+
+
+
+
+
+
