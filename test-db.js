@@ -1,31 +1,21 @@
-name: Teste Neon DB
+const { Client } = require('pg');
 
-on:
-  push:
-    branches:
-      - main
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+async function testConnection() {
+  try {
+    await client.connect();
+    console.log('✅ Conectado com sucesso ao banco Neon!');
+    await client.end();
+  } catch (error) {
+    console.error('❌ Erro na conexão:', error);
+    process.exit(1);
+  }
+}
 
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-    steps:
-      - name: Clonar repositório
-        uses: actions/checkout@v3
-
-      - name: Instalar Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Instalar pnpm
-        run: pnpm install -g pnpm
-
-      - name: Instalar dependências
-        run: pnpm install
-
-      - name: Rodar teste de conexão
-        run: node test-db.js
+testConnection();
