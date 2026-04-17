@@ -22,7 +22,7 @@ jobs:
           node-version: 18
 
       - name: Instalar dependências
-        run: npm install
+        run: pnpm install
 
       - name: Rodar teste de conexão
         run: node test-db.js
