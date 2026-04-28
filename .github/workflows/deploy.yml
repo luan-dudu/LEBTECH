@@ -21,11 +21,11 @@ jobs:
         with:
           node-version: 18
 
-      - name: Instalar pnpm
-        uses: pnpm/action-setup@v4
+      - name: Instalar npm
+        uses: npm/action-setup@v4
 
       - name: Instalar dependências
-        run: pnpm install
+        run: npm install
 
       - name: Rodar teste de conexão
         run: node test-db.js
