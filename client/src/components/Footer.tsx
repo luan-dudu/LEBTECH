@@ -1,0 +1,121 @@
+import { Mail, Phone, MapPin, Lock } from 'lucide-react';
+import { useLocation } from 'wouter';
+
+export default function Footer() {
+  const [, setLocation] = useLocation();
+  const currentYear = new Date().getFullYear();
+
+  return (
+    <footer className="bg-card/50 border-t border-border">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+          {/* Brand */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+              <img 
+              src="../public/images/logo.png" 
+              alt="LEB TECH Logo"
+              className="h-10 w-auto"/>
+            </div>
+              <span className="text-lg font-bold text-foreground">LEB TECH</span>
+            </div>
+            <p className="text-foreground/60 text-sm">
+              Soluções em tecnologia para impulsionar seu negócio
+            </p>
+          </div>
+
+          {/* Services */}
+          <div className="space-y-4">
+            <h4 className="font-bold text-foreground">Serviços</h4>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href="#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                  Assistência Técnica
+                </a>
+              </li>
+              <li>
+                <a href="#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                  Venda de Equipamentos
+                </a>
+              </li>
+              <li>
+                <a href="#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                  Consultoria em TI
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div className="space-y-4">
+            <h4 className="font-bold text-foreground">Empresa</h4>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href="#home" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                  Sobre Nós
+                </a>
+              </li>
+
+              <li>
+                <a href="#contato" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                  Contato
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div className="space-y-4">
+            <h4 className="font-bold text-foreground">Contato</h4>
+            <ul className="space-y-3 text-sm">
+              <li className="flex items-center gap-2 text-foreground/60">
+                <Mail size={16} className="text-blue-400" />
+                lebtech.co@gmail.com
+              </li>
+              <li className="flex items-center gap-2 text-foreground/60">
+                <Phone size={16} className="text-purple-400" />
+                (12) 988176687
+              </li>
+              <li className="flex items-center gap-2 text-foreground/60">
+                <MapPin size={16} className="text-blue-400" />
+                Pouso Alegre, MG
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Admin Button */}
+        <div className="border-t border-border/50 py-6 mb-6">
+          <div className="flex justify-center">
+            <button
+              onClick={() => setLocation('/admin/login')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 border border-slate-600/50 transition-all text-sm"
+            >
+              <Lock size={16} />
+              Acesso Admin
+            </button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-border/50 py-6">
+          <div className="flex flex-col md:flex-row items-center justify-between text-sm text-foreground/60">
+            <p>&copy; {currentYear} LEB Company. Todos os direitos reservados.</p>
+            <div className="flex gap-6 mt-4 md:mt-0">
+              <a href="#" className="hover:text-blue-400 transition-colors">
+                Privacidade
+              </a>
+              <a href="#" className="hover:text-blue-400 transition-colors">
+                Termos de Uso
+              </a>
+              <a href="#" className="hover:text-blue-400 transition-colors">
+                Cookies
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}

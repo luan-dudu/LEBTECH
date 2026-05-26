@@ -1,0 +1,339 @@
+import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
+import { LogOut, Users, FileText, CheckCircle, Clock, AlertCircle, BarChart3, Eye, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
+import AdminUsersTab from '@/components/AdminUsersTab';
+import AdminSocialMediaTab from '@/components/AdminSocialMediaTab';
+import StatsCharts from '@/components/StatsCharts';
+
+interface FormSubmission {
+  id: number;
+  type: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  status: 'pending' | 'viewed' | 'responded';
+  createdAt: string;
+  description: string;
+}
+
+export default function AdminDashboard() {
+  const [, setLocation] = useLocation();
+  const [adminEmail, setAdminEmail] = useState('');
+  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'submissions' | 'users' | 'social'>('submissions');
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    const email = localStorage.getItem('adminEmail');
+    if (!token) {
+      setLocation('/admin/login');
+      return;
+    }
+    setAdminEmail(email || '');
+    fetchSubmissions();
+  }, [setLocation]);
+
+  const fetchSubmissions = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/submissions');
+      const data = await response.json();
+      if (data.success) {
+        setSubmissions(data.data);
+      }
+    } catch (error) {
+      toast.error('Erro ao carregar solicitações');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminEmail');
+    toast.success('Logout realizado com sucesso!');
+    setLocation('/');
+  };
+
+  const handleStatusChange = async (id: number, type: string, newStatus: 'pending' | 'viewed' | 'responded') => {
+    try {
+      const response = await fetch('/api/admin/submissions/status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, type, status: newStatus }),
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error);
+      setSubmissions(prev =>
+        prev.map(sub => (sub.id === id && sub.type === type ? { ...sub, status: newStatus } : sub))
+      );
+      if (selectedSubmission?.id === id) {
+        setSelectedSubmission(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+      toast.success('Status atualizado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao atualizar status');
+    }
+  };
+
+  const filteredSubmissions = submissions.filter(sub => {
+    const typeMatch = filterType === 'all' || sub.type === filterType;
+    const statusMatch = filterStatus === 'all' || sub.status === filterStatus;
+    return typeMatch && statusMatch;
+  });
+
+  const stats = {
+    total: submissions.length,
+    pending: submissions.filter(s => s.status === 'pending').length,
+    viewed: submissions.filter(s => s.status === 'viewed').length,
+    responded: submissions.filter(s => s.status === 'responded').length,
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+      case 'viewed': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'responded': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return <Clock size={16} />;
+      case 'viewed': return <Eye size={16} />;
+      case 'responded': return <CheckCircle size={16} />;
+      default: return <AlertCircle size={16} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-black">
+      <header className="bg-slate-800/50 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Painel de Administração</h1>
+            <p className="text-slate-400 text-sm">Logado como: {adminEmail}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
+          >
+            <LogOut size={20} />
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-2 mb-8 border-b border-slate-700/50">
+          <button
+            onClick={() => setActiveTab('submissions')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all ${activeTab === 'submissions' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            <FileText size={20} />
+            Solicitações
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all ${activeTab === 'users' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            <Users size={20} />
+            Usuários
+          </button>
+          <button
+            onClick={() => setActiveTab('social')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-all ${activeTab === 'social' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          >
+            <Share2 size={20} />
+            Redes Sociais
+          </button>
+        </div>
+
+        {activeTab === 'submissions' && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Total de Solicitações</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stats.total}</p>
+                  </div>
+                  <BarChart3 className="text-blue-400" size={32} />
+                </div>
+              </div>
+              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Pendentes</p>
+                    <p className="text-3xl font-bold text-yellow-400 mt-2">{stats.pending}</p>
+                  </div>
+                  <Clock className="text-yellow-400" size={32} />
+                </div>
+              </div>
+              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Visualizadas</p>
+                    <p className="text-3xl font-bold text-blue-400 mt-2">{stats.viewed}</p>
+                  </div>
+                  <Eye className="text-blue-400" size={32} />
+                </div>
+              </div>
+              <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm">Respondidas</p>
+                    <p className="text-3xl font-bold text-green-400 mt-2">{stats.responded}</p>
+                  </div>
+                  <CheckCircle className="text-green-400" size={32} />
+                </div>
+              </div>
+            </div>
+
+            <StatsCharts />
+
+            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 mb-8">
+              <h2 className="text-lg font-semibold text-white mb-4">Filtros</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">Tipo de Serviço</label>
+                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-white focus:border-blue-500 focus:outline-none">
+                    <option value="all">Todos os Serviços</option>
+                    <option value="Assistência Técnica">Assistência Técnica</option>
+                    <option value="Venda de Equipamentos">Venda de Equipamentos</option>
+                    <option value="Consultoria de TI">Consultoria de TI</option>
+                    <option value="Projetos de TI">Projetos de TI</option>
+                    <option value="Gestão de TI">Gestão de TI</option>
+                    <option value="Contato">Contato</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">Status</label>
+                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-white focus:border-blue-500 focus:outline-none">
+                    <option value="all">Todos os Status</option>
+                    <option value="pending">Pendente</option>
+                    <option value="viewed">Visualizado</option>
+                    <option value="responded">Respondido</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-700/50 border-b border-slate-700">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-200">Nome</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-200">Serviço</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-200">Email</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-200">Status</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-200">Data</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-200">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-slate-400">Carregando...</td>
+                      </tr>
+                    ) : filteredSubmissions.length > 0 ? (
+                      filteredSubmissions.map((submission, index) => (
+                        <tr key={`${submission.type}-${submission.id}-${index}`} className="border-b border-slate-700/50 hover:bg-slate-700/20 transition-colors">
+                          <td className="px-6 py-4 text-sm text-white">{submission.name}</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">{submission.type}</td>
+                          <td className="px-6 py-4 text-sm text-slate-300">{submission.email}</td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(submission.status)}`}>
+                              {getStatusIcon(submission.status)}
+                              {submission.status === 'pending' && 'Pendente'}
+                              {submission.status === 'viewed' && 'Visualizado'}
+                              {submission.status === 'responded' && 'Respondido'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-400">{submission.createdAt}</td>
+                          <td className="px-6 py-4 text-sm">
+                            <button
+                              onClick={() => { setSelectedSubmission(submission); setShowDetails(true); }}
+                              className="text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                              Ver Detalhes
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-slate-400">Nenhuma solicitação encontrada</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {showDetails && selectedSubmission && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                  <div className="sticky top-0 bg-slate-800 border-b border-slate-700 flex items-center justify-between p-6">
+                    <h2 className="text-2xl font-bold text-white">Detalhes da Solicitação</h2>
+                    <button onClick={() => setShowDetails(false)} className="text-slate-400 hover:text-white transition-colors">✕</button>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div><p className="text-slate-400 text-sm">Nome</p><p className="text-white font-semibold mt-1">{selectedSubmission.name}</p></div>
+                      <div><p className="text-slate-400 text-sm">Email</p><p className="text-white font-semibold mt-1">{selectedSubmission.email}</p></div>
+                      <div><p className="text-slate-400 text-sm">Telefone</p><p className="text-white font-semibold mt-1">{selectedSubmission.phone}</p></div>
+                      <div><p className="text-slate-400 text-sm">Empresa</p><p className="text-white font-semibold mt-1">{selectedSubmission.company}</p></div>
+                      <div><p className="text-slate-400 text-sm">Tipo de Serviço</p><p className="text-white font-semibold mt-1">{selectedSubmission.type}</p></div>
+                      <div><p className="text-slate-400 text-sm">Data de Envio</p><p className="text-white font-semibold mt-1">{selectedSubmission.createdAt}</p></div>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-sm">Descrição</p>
+                      <p className="text-white mt-2 bg-slate-700/30 p-4 rounded-lg">{selectedSubmission.description}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 text-sm mb-3">Alterar Status</p>
+                      <div className="flex gap-2">
+                        {(['pending', 'viewed', 'responded'] as const).map((s) => (
+                          <button key={s}
+                            onClick={() => handleStatusChange(selectedSubmission.id, selectedSubmission.type, s)}
+                            className={`flex-1 px-4 py-2 rounded-lg transition-all ${selectedSubmission.status === s
+                              ? s === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                : s === 'viewed' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                  : 'bg-green-500/20 text-green-400 border border-green-500/50'
+                              : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:bg-slate-700'}`}>
+                            {s === 'pending' ? 'Pendente' : s === 'viewed' ? 'Visualizado' : 'Respondido'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-4 pt-6 border-t border-slate-700">
+                      <button onClick={() => setShowDetails(false)}
+                        className="flex-1 px-4 py-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 text-white transition-all">
+                        Fechar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'users' && <AdminUsersTab />}
+        {activeTab === 'social' && <AdminSocialMediaTab />}
+      </main>
+    </div>
+  );
+}

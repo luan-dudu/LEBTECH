@@ -1,0 +1,35 @@
+name: Use Fixed Neon Database for Pull Request
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+jobs:
+  run_migrations:
+    name: Run Migrations on Fixed Database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run migrations on Neon
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      
+      - name: Run tests if needed
+        run: npm test
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
