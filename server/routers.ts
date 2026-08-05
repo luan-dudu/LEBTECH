@@ -19,7 +19,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const result = await db.createTechnicalSupportRequest(input);
-        return { success: true, id: result.insertId };
+        return { success: true, id: result.id };
       }),
 
     list: publicProcedure
@@ -63,7 +63,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const result = await db.createEquipmentSalesRequest(input);
-        return { success: true, id: result.insertId };
+        return { success: true, id: result.id };
       }),
 
     list: publicProcedure
@@ -107,7 +107,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const result = await db.createConsultingRequest(input);
-        return { success: true, id: result.insertId };
+        return { success: true, id: result.id };
       }),
 
     list: publicProcedure
@@ -147,7 +147,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const result = await db.createContactMessage(input);
-        return { success: true, id: result.insertId };
+        return { success: true, id: result.id };
       }),
 
     list: publicProcedure

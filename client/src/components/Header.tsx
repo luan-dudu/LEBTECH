@@ -17,7 +17,7 @@ export default function Header() {
         {/* Logo */}
         <div className="flex items-center gap-2">
         <img 
-          src="../public/images/logo.png" 
+          src="/images/logo.png" 
            alt="LEB TECH Logo"
            className="h-10 w-auto"
          />

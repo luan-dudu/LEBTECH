@@ -21,8 +21,6 @@ jobs:
         with:
           node-version: 18
 
-      - name: Instalar npm
-        uses: npm/action-setup@v4
 
       - name: Instalar dependências
         run: npm install
