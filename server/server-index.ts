@@ -30,6 +30,7 @@ import {
   deleteUser,
   findUserByEmail,
 } from "./db";
+import { runAiChat, aiRateLimited } from "./ai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +95,19 @@ async function startServer() {
   app.post("/api/management", async (req, res) => {
     try {
       const result = await createItManagementRequest(req.body);
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const ip = String(req.headers["x-forwarded-for"] || req.ip || "anon");
+      if (aiRateLimited(ip)) {
+        return res.status(429).json({ success: false, error: "Muitas mensagens em pouco tempo. Aguarde alguns minutos." });
+      }
+      const result = await runAiChat(req.body?.messages);
       res.json({ success: true, data: result });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });

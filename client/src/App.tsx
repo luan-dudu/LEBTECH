@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import ServiceDetail from "./pages/ServiceDetail";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
+import AIAssistant from "./components/AIAssistant";
 
 
 function Router() {
@@ -39,6 +40,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <AIAssistant />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

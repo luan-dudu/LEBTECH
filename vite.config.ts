@@ -149,7 +149,66 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+function vitePluginAiChat(): Plugin {
+  return {
+    name: "leb-ai-chat-dev-server",
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url?.split("?")[0];
+        if (url !== "/api/ai/chat") {
+          return next();
+        }
+
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "application/json");
+          return res.end(JSON.stringify({ success: false, error: "Método não permitido" }));
+        }
+
+        // Garante que .env está carregado no process.env
+        const envPath = path.join(PROJECT_ROOT, ".env");
+        if (fs.existsSync(envPath)) {
+          const envContent = fs.readFileSync(envPath, "utf-8");
+          for (const line of envContent.split(/\r?\n/)) {
+            const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
+            if (m && !process.env[m[1]]) {
+              process.env[m[1]] = m[2].trim();
+            }
+          }
+        }
+
+        let body = "";
+        req.on("data", (chunk) => {
+          body += chunk.toString();
+        });
+
+        req.on("end", async () => {
+          try {
+            const payload = JSON.parse(body || "{}");
+            const { runAiChat } = await import("./server/ai.ts");
+            const result = await runAiChat(payload.messages);
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ success: true, data: result }));
+          } catch (err: any) {
+            console.error("[LEB IA Dev Error]:", err);
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ success: false, error: err.message || "Erro interno na IA" }));
+          }
+        });
+      });
+    },
+  };
+}
+
+const plugins = [
+  react(),
+  tailwindcss(),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+  vitePluginAiChat(),
+];
 
 export default defineConfig({
   plugins,
@@ -171,8 +230,15 @@ export default defineConfig({
     strictPort: false, // Will find next available port if 3000 is busy
     host: true,
     proxy: {
-    '/api': 'http://localhost:3001',
-  },
+      '/api': {
+        target: 'http://localhost:3001',
+        bypass(req) {
+          if (req.url?.startsWith('/api/ai/chat')) {
+            return req.url;
+          }
+        },
+      },
+    },
     allowedHosts: [
       ".manuspre.computer",
       ".manus.computer",

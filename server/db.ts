@@ -3,9 +3,32 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
 import * as schema from '../drizzle/schema';
 import bcrypt from 'bcryptjs';
-// Conexão Neon via HTTP — compatível com ambientes serverless (Netlify Functions)
-const sql = neon(process.env.DATABASE_URL!);
-export const db = drizzle(sql, { schema });
+// Conexão Neon via HTTP — inicializada sob demanda para não falhar no import caso DATABASE_URL não esteja definida
+let _db: any = null;
+function getDbInstance() {
+  if (!_db) {
+    const url =
+      process.env.DATABASE_URL ||
+      (process.env.DB_HOST && process.env.DB_USER
+        ? `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD || ''}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'leb_tech'}`
+        : '');
+
+    if (!url) {
+      throw new Error('DATABASE_URL não configurada no arquivo .env.');
+    }
+    const sql = neon(url);
+    _db = drizzle(sql, { schema });
+  }
+  return _db;
+}
+
+export const db = new Proxy({} as any, {
+  get(_target, prop) {
+    const instance = getDbInstance();
+    const value = instance[prop];
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+});
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 

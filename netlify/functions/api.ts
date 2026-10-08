@@ -25,6 +25,7 @@ import {
   deleteUser,
   verifyUserPassword,
 } from '../../server/db';
+import { runAiChat, aiRateLimited } from '../../server/ai';
 
 const app = express();
 
@@ -81,6 +82,21 @@ app.post('/api/projects', async (req, res) => {
 app.post('/api/management', async (req, res) => {
   try {
     const result = await createItManagementRequest(req.body);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ─── LEB IA — ATENDIMENTO N1 ──────────────────────────────────────────────────
+
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const ip = String(req.headers['x-nf-client-connection-ip'] || req.headers['x-forwarded-for'] || req.ip || 'anon');
+    if (aiRateLimited(ip)) {
+      return res.status(429).json({ success: false, error: 'Muitas mensagens em pouco tempo. Aguarde alguns minutos.' });
+    }
+    const result = await runAiChat(req.body?.messages);
     res.json({ success: true, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
