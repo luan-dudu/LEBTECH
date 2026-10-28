@@ -17,7 +17,7 @@ function getDbInstance() {
         : '');
 
     if (!url) {
-      throw new Error('DATABASE_URL não configurada no arquivo .env.');
+      throw new Error('DATABASE_URL não configurada. Configure a variável DATABASE_URL (string de conexão Neon ou PostgreSQL) no painel de deploy (Netlify/Vercel) ou no arquivo .env local.');
     }
 
     if (url.includes('neon.tech')) {

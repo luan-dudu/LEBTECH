@@ -84,12 +84,15 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const response = await fetch('/api/admin/submissions');
-      const data = await response.json();
-      if (data.success) {
+      const data = await response.json().catch(() => null);
+      if (data && data.success) {
         setSubmissions(data.data);
+      } else {
+        const errorMsg = data?.error || `Erro HTTP ${response.status} ao carregar dados`;
+        toast.error(errorMsg);
       }
-    } catch (error) {
-      toast.error('Erro ao carregar solicitações');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao carregar solicitações');
     } finally {
       setLoading(false);
     }

@@ -294,7 +294,9 @@ function checkSecurityGuardrail(text: string): string | null {
 
 export async function runAiChat(rawMessages: unknown): Promise<AiChatResult> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY não configurada no servidor.');
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor. Configure a variável GEMINI_API_KEY no painel da sua hospedagem (Netlify/Vercel) ou no arquivo .env local.');
+  }
 
   const history = sanitizeHistory(rawMessages);
 
@@ -425,7 +427,9 @@ export function aiRateLimited(ip: string, limit = 30, windowMs = 10 * 60 * 1000)
 
 async function callGeminiText(prompt: string, systemInstruction?: string, jsonMode = false): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY não configurada no servidor.');
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY não configurada no servidor. Configure a variável GEMINI_API_KEY no painel da sua hospedagem (Netlify/Vercel) ou no arquivo .env local.');
+  }
 
   const requestBody: any = {
     contents: [{ parts: [{ text: prompt }] }],
