@@ -29,8 +29,12 @@ import {
   createUser,
   deleteUser,
   findUserByEmail,
+  getLebIaTickets,
+  updateLebIaTicketStatus,
+  updateSubmissionAiProposal,
+  updateSubmissionAiAnalysis,
 } from "./db";
-import { runAiChat, aiRateLimited } from "./ai";
+import { runAiChat, aiRateLimited, generateAiProposal, analyzeAiSubmission } from "./ai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -139,22 +143,44 @@ async function startServer() {
 
   app.get("/api/admin/submissions", async (req, res) => {
     try {
-      const [support, equipment, consulting, contact, projects, management] = await Promise.all([
+      const [support, equipment, consulting, contact, projects, management, lebIa] = await Promise.all([
         getTechnicalSupportRequests(),
         getEquipmentSalesRequests(),
         getConsultingRequests(),
         getContactMessages(),
         getItProjectRequests(),
         getItManagementRequests(),
+        getLebIaTickets(),
       ]);
 
       const all = [
-        ...support.map(s => ({ id: s.id, type: 'Assistência Técnica', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description })),
-        ...equipment.map(s => ({ id: s.id, type: 'Venda de Equipamentos', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.specifications })),
-        ...consulting.map(s => ({ id: s.id, type: 'Consultoria de TI', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.currentChallenges })),
-        ...contact.map(s => ({ id: s.id, type: 'Contato', name: s.name, email: s.email, phone: s.phone || '', company: '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.message })),
-        ...projects.map(s => ({ id: s.id, type: 'Projetos de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description })),
-        ...management.map(s => ({ id: s.id, type: 'Gestão de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.challenges })),
+        ...support.map((s: any) => ({ id: s.id, type: 'Assistência Técnica', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...equipment.map((s: any) => ({ id: s.id, type: 'Venda de Equipamentos', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.specifications, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...consulting.map((s: any) => ({ id: s.id, type: 'Consultoria de TI', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.currentChallenges, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...contact.map((s: any) => ({ id: s.id, type: 'Contato', name: s.name, email: s.email, phone: s.phone || '', company: '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.message, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...projects.map((s: any) => ({ id: s.id, type: 'Projetos de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...management.map((s: any) => ({ id: s.id, type: 'Gestão de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.challenges, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...lebIa.map((t: any) => ({
+          id: t.id,
+          type: 'Atendimento LEB IA',
+          name: t.name,
+          email: t.email,
+          phone: t.phone || '',
+          company: t.company || (t.city ? `Cidade: ${t.city}` : 'Cliente Particular'),
+          status: t.status,
+          createdAt: t.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
+          description: t.whatsappText || `[${t.category} - Urgência ${t.urgency}]\n${t.summary}\n${t.symptoms ? 'Sintomas: ' + t.symptoms : ''}`,
+          aiProposal: t.aiProposal,
+          aiAnalysis: t.aiAnalysis || {
+            urgencia: t.urgency,
+            categoriaSugerida: t.category,
+            nivelComplexidade: t.resolvedN1 ? 'N1 - Suporte Básico' : 'N2 - Técnico Especializado',
+            impactoNegocio: t.summary,
+            tags: [t.category, `Urgência ${t.urgency}`, t.equipment || 'TI'].filter(Boolean).map((x: string) => '#' + x.replace(/\s+/g, '')),
+            acaoRecomendada: t.preliminaryDiagnosis || (t.resolvedN1 ? 'Resolvido no N1 via LEB IA. Acompanhar satisfação.' : 'Agendar visita ou atendimento remoto com técnico responsável.')
+          },
+          rawTicket: t,
+        })),
       ].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
       res.json({ success: true, data: all });
@@ -172,6 +198,57 @@ async function startServer() {
       else if (type === 'Contato') await updateContactMessageStatus(id, status);
       else if (type === 'Projetos de TI') await updateItProjectRequestStatus(id, status);
       else if (type === 'Gestão de TI') await updateItManagementRequestStatus(id, status);
+      else if (type === 'Atendimento LEB IA') await updateLebIaTicketStatus(id, status);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ✨ Gerador Automático de Propostas Técnicas com IA
+  app.post("/api/admin/ai/proposal", async (req, res) => {
+    try {
+      const { type, id, name, company, phone, email, description } = req.body;
+      if (!name || !description) {
+        return res.status(400).json({ success: false, error: "Nome e descrição são obrigatórios." });
+      }
+      const proposal = await generateAiProposal({ type: type || 'Geral', name, company, phone, email, description });
+      if (id && type) {
+        await updateSubmissionAiProposal(type, Number(id), proposal);
+      }
+      res.json({ success: true, proposal });
+    } catch (error: any) {
+      console.error("[LEB IA] Erro ao gerar proposta:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // 🎯 Triagem e Classificação Inteligente com IA
+  app.post("/api/admin/ai/analyze", async (req, res) => {
+    try {
+      const { type, id, name, company, description } = req.body;
+      if (!name || !description) {
+        return res.status(400).json({ success: false, error: "Nome e descrição são obrigatórios." });
+      }
+      const analysis = await analyzeAiSubmission({ type: type || 'Geral', name, company, description });
+      if (id && type) {
+        await updateSubmissionAiAnalysis(type, Number(id), analysis);
+      }
+      res.json({ success: true, analysis });
+    } catch (error: any) {
+      console.error("[LEB IA] Erro ao analisar chamado:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Salvar proposta editada manualmente pelo admin
+  app.put("/api/admin/submissions/proposal", async (req, res) => {
+    try {
+      const { type, id, proposal } = req.body;
+      if (!id || !type) {
+        return res.status(400).json({ success: false, error: "ID e tipo são obrigatórios." });
+      }
+      await updateSubmissionAiProposal(type, Number(id), proposal);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });

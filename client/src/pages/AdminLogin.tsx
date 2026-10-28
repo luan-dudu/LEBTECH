@@ -25,8 +25,15 @@ export default function AdminLogin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error || 'Email ou senha incorretos!');
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error('Servidor não retornou uma resposta válida. Verifique se o servidor está ativo.');
+      }
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Email ou senha incorretos!');
+      }
       localStorage.setItem('adminToken', data.token);
       localStorage.setItem('adminEmail', credentials.email);
       toast.success('Login realizado com sucesso!');

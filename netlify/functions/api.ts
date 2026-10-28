@@ -24,8 +24,12 @@ import {
   createUser,
   deleteUser,
   verifyUserPassword,
+  getLebIaTickets,
+  updateLebIaTicketStatus,
+  updateSubmissionAiProposal,
+  updateSubmissionAiAnalysis,
 } from '../../server/db';
-import { runAiChat, aiRateLimited } from '../../server/ai';
+import { runAiChat, aiRateLimited, generateAiProposal, analyzeAiSubmission } from '../../server/ai';
 
 const app = express();
 
@@ -107,19 +111,26 @@ app.post('/api/ai/chat', async (req, res) => {
 
 app.post('/api/admin/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    // Checar credencial de admin via variáveis de ambiente
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@lebtech.com';
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email e senha são obrigatórios.' });
+    }
+
+    const inputEmail = String(email).trim().toLowerCase();
+    const adminEmailEnv = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const defaultEmails = ['admin@lebtech.com', 'admin@lebtech.com.br'];
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-    if (email === adminEmail && password === adminPassword) {
+    const isMatchAdminEmail = defaultEmails.includes(inputEmail) || (adminEmailEnv && inputEmail === adminEmailEnv);
+
+    if (isMatchAdminEmail && String(password) === adminPassword) {
       const token = generateToken(email);
       return res.json({ success: true, token });
     }
 
     // Checar usuários cadastrados no banco
-    const user = await verifyUserPassword(email, password);
+    const user = await verifyUserPassword(email, password).catch(() => null);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -130,7 +141,7 @@ app.post('/api/admin/login', async (req, res) => {
     const token = generateToken(user.email!);
     res.json({ success: true, token });
   } catch (error: any) {
-    res.status(401).json({ success: false, error: error.message });
+    res.status(401).json({ success: false, error: error.message || 'Erro ao realizar login.' });
   }
 });
 
@@ -138,7 +149,7 @@ app.post('/api/admin/login', async (req, res) => {
 
 app.get('/api/admin/submissions', async (_req, res) => {
   try {
-    const [support, equipment, consulting, contact, projects, management] =
+    const [support, equipment, consulting, contact, projects, management, lebIa] =
       await Promise.all([
         getTechnicalSupportRequests(),
         getEquipmentSalesRequests(),
@@ -146,6 +157,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         getContactMessages(),
         getItProjectRequests(),
         getItManagementRequests(),
+        getLebIaTickets(),
       ]);
 
     const all = [
@@ -160,6 +172,8 @@ app.get('/api/admin/submissions', async (_req, res) => {
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.description,
         adminNotes: s.adminNotes,
+        aiProposal: (s as any).aiProposal,
+        aiAnalysis: (s as any).aiAnalysis,
       })),
       ...equipment.map((s) => ({
         id: s.id,
@@ -172,6 +186,8 @@ app.get('/api/admin/submissions', async (_req, res) => {
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.specifications,
         adminNotes: s.adminNotes,
+        aiProposal: (s as any).aiProposal,
+        aiAnalysis: (s as any).aiAnalysis,
       })),
       ...consulting.map((s) => ({
         id: s.id,
@@ -184,6 +200,8 @@ app.get('/api/admin/submissions', async (_req, res) => {
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.currentChallenges,
         adminNotes: s.adminNotes,
+        aiProposal: (s as any).aiProposal,
+        aiAnalysis: (s as any).aiAnalysis,
       })),
       ...contact.map((s) => ({
         id: s.id,
@@ -196,6 +214,8 @@ app.get('/api/admin/submissions', async (_req, res) => {
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.message,
         adminNotes: s.adminNotes,
+        aiProposal: (s as any).aiProposal,
+        aiAnalysis: (s as any).aiAnalysis,
       })),
       ...projects.map((s) => ({
         id: s.id,
@@ -208,6 +228,8 @@ app.get('/api/admin/submissions', async (_req, res) => {
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.description,
         adminNotes: s.adminNotes,
+        aiProposal: (s as any).aiProposal,
+        aiAnalysis: (s as any).aiAnalysis,
       })),
       ...management.map((s) => ({
         id: s.id,
@@ -220,6 +242,30 @@ app.get('/api/admin/submissions', async (_req, res) => {
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.challenges,
         adminNotes: s.adminNotes,
+        aiProposal: (s as any).aiProposal,
+        aiAnalysis: (s as any).aiAnalysis,
+      })),
+      ...lebIa.map((t) => ({
+        id: t.id,
+        type: 'Atendimento LEB IA',
+        name: t.name,
+        email: t.email,
+        phone: t.phone || '',
+        company: t.company || (t.city ? `Cidade: ${t.city}` : 'Cliente Particular'),
+        status: t.status,
+        createdAt: t.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
+        description: t.whatsappText || `[${t.category} - Urgência ${t.urgency}]\n${t.summary}\n${t.symptoms ? 'Sintomas: ' + t.symptoms : ''}`,
+        adminNotes: t.adminNotes,
+        aiProposal: (t as any).aiProposal,
+        aiAnalysis: (t as any).aiAnalysis || {
+          urgencia: t.urgency,
+          categoriaSugerida: t.category,
+          nivelComplexidade: t.resolvedN1 ? 'N1 - Suporte Básico' : 'N2 - Técnico Especializado',
+          impactoNegocio: t.summary,
+          tags: [t.category, `Urgência ${t.urgency}`, t.equipment || 'TI'].filter(Boolean).map(x => '#' + x.replace(/\s+/g, '')),
+          acaoRecomendada: t.preliminaryDiagnosis || (t.resolvedN1 ? 'Resolvido no N1 via LEB IA. Acompanhar satisfação.' : 'Agendar visita ou atendimento remoto com técnico responsável.')
+        },
+        rawTicket: t,
       })),
     ].sort((a, b) =>
       (b.createdAt || '').localeCompare(a.createdAt || '')
@@ -247,7 +293,59 @@ app.put('/api/admin/submissions/status', async (req, res) => {
       await updateItProjectRequestStatus(id, status);
     else if (type === 'Gestão de TI')
       await updateItManagementRequestStatus(id, status);
+    else if (type === 'Atendimento LEB IA')
+      await updateLebIaTicketStatus(id, status);
 
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ✨ Gerador Automático de Propostas com IA
+app.post('/api/admin/ai/proposal', async (req, res) => {
+  try {
+    const { type, id, name, company, phone, email, description } = req.body;
+    if (!name || !description) {
+      return res.status(400).json({ success: false, error: 'Nome e descrição são obrigatórios.' });
+    }
+    const proposal = await generateAiProposal({ type: type || 'Geral', name, company, phone, email, description });
+    if (id && type) {
+      await updateSubmissionAiProposal(type, Number(id), proposal);
+    }
+    res.json({ success: true, proposal });
+  } catch (error: any) {
+    console.error('[LEB IA] Erro ao gerar proposta:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 🎯 Triagem e Classificação Inteligente com IA
+app.post('/api/admin/ai/analyze', async (req, res) => {
+  try {
+    const { type, id, name, company, description } = req.body;
+    if (!name || !description) {
+      return res.status(400).json({ success: false, error: 'Nome e descrição são obrigatórios.' });
+    }
+    const analysis = await analyzeAiSubmission({ type: type || 'Geral', name, company, description });
+    if (id && type) {
+      await updateSubmissionAiAnalysis(type, Number(id), analysis);
+    }
+    res.json({ success: true, analysis });
+  } catch (error: any) {
+    console.error('[LEB IA] Erro ao analisar chamado:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Salvar proposta editada manualmente pelo admin
+app.put('/api/admin/submissions/proposal', async (req, res) => {
+  try {
+    const { type, id, proposal } = req.body;
+    if (!id || !type) {
+      return res.status(400).json({ success: false, error: 'ID e tipo são obrigatórios.' });
+    }
+    await updateSubmissionAiProposal(type, Number(id), proposal);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -309,3 +407,4 @@ function generateToken(email: string): string {
 // ─── EXPORT para Netlify Functions ────────────────────────────────────────────
 
 export const handler = serverless(app);
+export { app };

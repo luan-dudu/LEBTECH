@@ -18,7 +18,7 @@ const servicesData: Record<string, ServiceInfo> = {
     title: 'Assistência Técnica',
     subtitle: 'Suporte especializado 24/7 para sua infraestrutura de TI',
     description: 'Oferecemos assistência técnica completa e especializada para manutenção, diagnóstico e resolução rápida de problemas em sua infraestrutura de TI. Nossa equipe de técnicos certificados está disponível 24/7 para garantir a continuidade dos seus negócios.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/technical-support-2iUhqb4CRqqUqRPUcCd9zA.webp',
+    image: '/images/technical-support.jpg',
     benefits: [
       'Suporte 24/7 com resposta rápida',
       'Técnicos certificados e experientes',
@@ -72,7 +72,7 @@ const servicesData: Record<string, ServiceInfo> = {
     title: 'Venda de Equipamentos',
     subtitle: 'Equipamentos de TI de qualidade com melhor preço',
     description: 'Comercializamos computadores, servidores, periféricos e equipamentos de rede de marcas líderes do mercado. Oferecemos soluções customizadas com garantia completa e suporte pós-venda.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/equipment-sales-FpGkey2cqr98dsWH5Az8Nr.webp',
+    image: '/images/equipment-sales.jpg',
     benefits: [
       'Marcas premium e confiáveis',
       'Melhor relação custo-benefício',
@@ -126,7 +126,7 @@ const servicesData: Record<string, ServiceInfo> = {
     title: 'Consultoria de TI',
     subtitle: 'Estratégia e otimização tecnológica para seu negócio',
     description: 'Oferecemos consultoria especializada em TI para empresas que desejam otimizar sua infraestrutura, implementar novas soluções e alinhar a tecnologia com seus objetivos de negócio.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/consulting-services-P3viMfhQo5ZoYms7h7R4RN.webp',
+    image: '/images/consulting-services.jpg',
     benefits: [
       'Análise completa da infraestrutura',
       'Planejamento estratégico de TI',
@@ -180,7 +180,7 @@ const servicesData: Record<string, ServiceInfo> = {
     title: 'Projetos de TI',
     subtitle: 'Desenvolvimento e implementação de soluções customizadas',
     description: 'Desenvolvemos e implementamos projetos tecnológicos customizados que atendem às necessidades específicas da sua empresa, desde infraestrutura até aplicações de negócio.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/tech-background-pattern-nbMFWsLn4cp8LrSB4sYcZv.webp',
+    image: '/images/tech-background-pattern.jpg',
     benefits: [
       'Soluções customizadas',
       'Equipe experiente',
@@ -234,7 +234,7 @@ const servicesData: Record<string, ServiceInfo> = {
     title: 'Gestão de TI',
     subtitle: 'Monitoramento e gestão contínua de sua infraestrutura',
     description: 'Oferecemos serviços completos de gestão de TI com monitoramento 24/7, service desk, help desk e suporte contínuo para garantir a disponibilidade e eficiência de seus sistemas.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/hero-tech-solutions-oH9Lk8G822ZHH4RzjAGPwg.webp',
+    image: '/images/it-management.jpg',
     benefits: [
       'Monitoramento 24/7',
       'Service desk especializado',

@@ -7,6 +7,7 @@ import {
   pgTable,
   serial,
   boolean,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 
 // ── Enums ──────────────────────────────────────────────────────────────────────
@@ -79,6 +80,8 @@ export const technicalSupportRequests = pgTable('technical_support_requests', {
   urgency: varchar('urgency', { length: 50 }).notNull(),
   description: text('description').notNull(),
   adminNotes: text('admin_notes'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
   status: supportStatusEnum('status').notNull().default('pending'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -98,6 +101,8 @@ export const equipmentSalesRequests = pgTable('equipment_sales_requests', {
   budget: varchar('budget', { length: 100 }),
   timeline: varchar('timeline', { length: 50 }).notNull(),
   adminNotes: text('admin_notes'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
   status: salesStatusEnum('status').notNull().default('pending'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -117,6 +122,8 @@ export const consultingRequests = pgTable('consulting_requests', {
   teamSize: varchar('team_size', { length: 50 }),
   budget: varchar('budget', { length: 100 }),
   adminNotes: text('admin_notes'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
   status: consultingStatusEnum('status').notNull().default('pending'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -132,6 +139,8 @@ export const contactMessages = pgTable('contact_messages', {
   subject: varchar('subject', { length: 255 }).notNull(),
   message: text('message').notNull(),
   adminNotes: text('admin_notes'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
   status: contactStatusEnum('status').notNull().default('new'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -150,6 +159,8 @@ export const itProjectsRequests = pgTable('it_projects_requests', {
   budget: varchar('budget', { length: 50 }).notNull(),
   description: text('description').notNull(),
   adminNotes: text('admin_notes'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
   status: projectStatusEnum('status').notNull().default('pending'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -168,7 +179,36 @@ export const itManagementRequests = pgTable('it_management_requests', {
   infrastructure: varchar('infrastructure', { length: 50 }).notNull(),
   challenges: text('challenges').notNull(),
   adminNotes: text('admin_notes'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
   status: managementStatusEnum('status').notNull().default('pending'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// ── leb_ia_tickets ─────────────────────────────────────────────────────────────
+
+export const lebIaTickets = pgTable('leb_ia_tickets', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 320 }).notNull(),
+  phone: varchar('phone', { length: 50 }),
+  company: varchar('company', { length: 255 }),
+  city: varchar('city', { length: 100 }),
+  category: varchar('category', { length: 100 }).notNull(),
+  urgency: varchar('urgency', { length: 50 }).notNull(),
+  equipment: varchar('equipment', { length: 255 }),
+  summary: text('summary').notNull(),
+  symptoms: text('symptoms'),
+  stepsTaken: text('steps_taken'),
+  preliminaryDiagnosis: text('preliminary_diagnosis'),
+  availability: varchar('availability', { length: 100 }),
+  resolvedN1: boolean('resolved_n1').default(false),
+  whatsappText: text('whatsapp_text'),
+  status: varchar('status', { length: 50 }).notNull().default('pending'),
+  aiProposal: text('ai_proposal'),
+  aiAnalysis: jsonb('ai_analysis'),
+  adminNotes: text('admin_notes'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -182,6 +222,7 @@ export type ConsultingRequest = typeof consultingRequests.$inferSelect;
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type ItProjectRequest = typeof itProjectsRequests.$inferSelect;
 export type ItManagementRequest = typeof itManagementRequests.$inferSelect;
+export type LebIaTicket = typeof lebIaTickets.$inferSelect;
 
 // Insert types
 export type NewUser = typeof users.$inferInsert;
@@ -191,3 +232,4 @@ export type NewConsultingRequest = typeof consultingRequests.$inferInsert;
 export type NewContactMessage = typeof contactMessages.$inferInsert;
 export type NewItProjectRequest = typeof itProjectsRequests.$inferInsert;
 export type NewItManagementRequest = typeof itManagementRequests.$inferInsert;
+export type NewLebIaTicket = typeof lebIaTickets.$inferInsert;

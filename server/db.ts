@@ -1,9 +1,12 @@
 import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../drizzle/schema';
 import bcrypt from 'bcryptjs';
-// Conexão Neon via HTTP — inicializada sob demanda para não falhar no import caso DATABASE_URL não esteja definida
+
+// Conexão Neon (HTTP) ou PostgreSQL Local (pg Pool) — inicializada sob demanda
 let _db: any = null;
 function getDbInstance() {
   if (!_db) {
@@ -16,8 +19,14 @@ function getDbInstance() {
     if (!url) {
       throw new Error('DATABASE_URL não configurada no arquivo .env.');
     }
-    const sql = neon(url);
-    _db = drizzle(sql, { schema });
+
+    if (url.includes('neon.tech')) {
+      const sql = neon(url);
+      _db = drizzleNeon(sql, { schema });
+    } else {
+      const pool = new pg.Pool({ connectionString: url });
+      _db = drizzlePg(pool, { schema });
+    }
   }
   return _db;
 }
@@ -132,6 +141,14 @@ export async function createItManagementRequest(data: {
   return result[0];
 }
 
+export async function createLebIaTicket(data: schema.NewLebIaTicket) {
+  const result = await db
+    .insert(schema.lebIaTickets)
+    .values(data)
+    .returning();
+  return result[0];
+}
+
 // ─── READ ─────────────────────────────────────────────────────────────────────
 
 export async function getTechnicalSupportRequests(limit = 50, offset = 0) {
@@ -178,6 +195,14 @@ export async function getItManagementRequests(limit = 50, offset = 0) {
   return db
     .select()
     .from(schema.itManagementRequests)
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function getLebIaTickets(limit = 100, offset = 0) {
+  return db
+    .select()
+    .from(schema.lebIaTickets)
     .limit(limit)
     .offset(offset);
 }
@@ -239,6 +264,50 @@ export async function updateItManagementRequestStatus(
     .update(schema.itManagementRequests)
     .set({ status: status as any, updatedAt: new Date() })
     .where(eq(schema.itManagementRequests.id, id));
+}
+
+export async function updateLebIaTicketStatus(
+  id: number,
+  status: string
+) {
+  return db
+    .update(schema.lebIaTickets)
+    .set({ status: status, updatedAt: new Date() })
+    .where(eq(schema.lebIaTickets.id, id));
+}
+
+// ─── UPDATE AI PROPOSAL & ANALYSIS ──────────────────────────────────────────
+
+export async function updateSubmissionAiProposal(type: string, id: number, proposal: string) {
+  const table =
+    type === 'Assistência Técnica' ? schema.technicalSupportRequests :
+    type === 'Venda de Equipamentos' ? schema.equipmentSalesRequests :
+    type === 'Consultoria de TI' ? schema.consultingRequests :
+    type === 'Projetos de TI' ? schema.itProjectsRequests :
+    type === 'Gestão de TI' ? schema.itManagementRequests :
+    type === 'Atendimento LEB IA' ? schema.lebIaTickets :
+    schema.contactMessages;
+
+  return db
+    .update(table)
+    .set({ aiProposal: proposal, updatedAt: new Date() })
+    .where(eq(table.id, id));
+}
+
+export async function updateSubmissionAiAnalysis(type: string, id: number, analysis: any) {
+  const table =
+    type === 'Assistência Técnica' ? schema.technicalSupportRequests :
+    type === 'Venda de Equipamentos' ? schema.equipmentSalesRequests :
+    type === 'Consultoria de TI' ? schema.consultingRequests :
+    type === 'Projetos de TI' ? schema.itProjectsRequests :
+    type === 'Gestão de TI' ? schema.itManagementRequests :
+    type === 'Atendimento LEB IA' ? schema.lebIaTickets :
+    schema.contactMessages;
+
+  return db
+    .update(table)
+    .set({ aiAnalysis: analysis, updatedAt: new Date() })
+    .where(eq(table.id, id));
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────

@@ -21,7 +21,7 @@ const projects: Project[] = [
     title: 'Migração para Cloud',
     category: 'Infraestrutura',
     description: 'Migração completa de infraestrutura on-premises para cloud, com zero downtime e otimização de custos.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/portfolio-project-1-cloud-migration-KD3354kCajts8uHpyiMPWk.webp',
+    image: '/images/portfolio-project-1-cloud-migration.jpg',
     metrics: [
       { label: 'Uptime', value: '99.99%' },
       { label: 'Economia', value: '40%' },
@@ -34,7 +34,7 @@ const projects: Project[] = [
     title: 'Auditoria de Segurança',
     category: 'Segurança',
     description: 'Auditoria completa de segurança e implementação de conformidade com LGPD, ISO 27001 e PCI-DSS.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/portfolio-project-2-security-audit-EKti7T9f7PvoHeQiE8txZG.webp',
+    image: '/images/portfolio-project-2-security-audit.jpg',
     metrics: [
       { label: 'Vulnerabilidades', value: '0' },
       { label: 'Conformidade', value: '100%' },
@@ -47,7 +47,7 @@ const projects: Project[] = [
     title: 'Upgrade de Infraestrutura',
     category: 'Rede',
     description: 'Upgrade completo de infraestrutura de rede com implementação de redundância e failover automático.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/portfolio-project-3-network-infrastructure-VkhrHGHWKaSn3tk8PkV9mc.webp',
+    image: '/images/portfolio-project-3-network-infrastructure.jpg',
     metrics: [
       { label: 'Latência', value: '2ms' },
       { label: 'Bandwidth', value: '1 Gbps' },
@@ -60,7 +60,7 @@ const projects: Project[] = [
     title: 'Automação de Processos',
     category: 'Automação',
     description: 'Implementação de automação de processos IT com redução de 80% em tarefas manuais e aumento de eficiência.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/portfolio-project-4-automation-HNGX32yGZZbXGWLDTkxzyS.webp',
+    image: '/images/portfolio-project-4-automation.jpg',
     metrics: [
       { label: 'Redução Manual', value: '80%' },
       { label: 'Eficiência', value: '+65%' },
@@ -73,7 +73,7 @@ const projects: Project[] = [
     title: 'Solução de Disaster Recovery',
     category: 'Backup',
     description: 'Implementação de solução completa de disaster recovery com RTO < 1 hora e RPO < 15 minutos.',
-    image: 'https://d2xsxph8kpxj0f.cloudfront.net/310419663030699559/UjFYWBBdi8jAWih5h5i7dJ/portfolio-project-5-disaster-recovery-VaSMc5Yc3YPmchz9qFZNvs.webp',
+    image: '/images/portfolio-project-5-disaster-recovery.jpg',
     metrics: [
       { label: 'RTO', value: '< 1 hora' },
       { label: 'RPO', value: '< 15 min' },
