@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import AdminUsersTab from '@/components/AdminUsersTab';
 import AdminSocialMediaTab from '@/components/AdminSocialMediaTab';
 import StatsCharts from '@/components/StatsCharts';
+import { adminRequest, clearAdminSession, formatDateTime, getAdminEmail, getAdminToken } from '@/lib/adminApi';
 
 interface AiAnalysis {
   urgencia?: 'Crítica' | 'Alta' | 'Média' | 'Baixa' | string;
@@ -36,7 +37,7 @@ interface AiAnalysis {
   acaoRecomendada?: string;
 }
 
-interface FormSubmission {
+export interface FormSubmission {
   id: number;
   type: string;
   name: string;
@@ -70,27 +71,19 @@ export default function AdminDashboard() {
   const [copiedProposal, setCopiedProposal] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken');
-    const email = localStorage.getItem('adminEmail');
-    if (!token) {
+    if (!getAdminToken()) {
       setLocation('/admin/login');
       return;
     }
-    setAdminEmail(email || '');
+    setAdminEmail(getAdminEmail());
     fetchSubmissions();
   }, [setLocation]);
 
   const fetchSubmissions = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/submissions');
-      const data = await response.json().catch(() => null);
-      if (data && data.success) {
-        setSubmissions(data.data);
-      } else {
-        const errorMsg = data?.error || `Erro HTTP ${response.status} ao carregar dados`;
-        toast.error(errorMsg);
-      }
+      const data = await adminRequest<{ data: FormSubmission[] }>('/api/admin/submissions');
+      setSubmissions(data.data);
     } catch (error: any) {
       toast.error(error.message || 'Erro ao carregar solicitações');
     } finally {
@@ -99,21 +92,17 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminEmail');
+    clearAdminSession();
     toast.success('Logout realizado com sucesso!');
     setLocation('/');
   };
 
   const handleStatusChange = async (id: number, type: string, newStatus: 'pending' | 'viewed' | 'responded') => {
     try {
-      const response = await fetch('/api/admin/submissions/status', {
+      await adminRequest('/api/admin/submissions/status', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, type, status: newStatus }),
+        body: { id, type, status: newStatus },
       });
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error);
       setSubmissions(prev =>
         prev.map(sub => (sub.id === id && sub.type === type ? { ...sub, status: newStatus } : sub))
       );
@@ -121,8 +110,8 @@ export default function AdminDashboard() {
         setSelectedSubmission(prev => prev ? { ...prev, status: newStatus } : null);
       }
       toast.success('Status atualizado com sucesso!');
-    } catch (error) {
-      toast.error('Erro ao atualizar status');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar status');
     }
   };
 
@@ -138,10 +127,9 @@ export default function AdminDashboard() {
     if (!selectedSubmission) return;
     setGeneratingProposal(true);
     try {
-      const res = await fetch('/api/admin/ai/proposal', {
+      const data = await adminRequest<{ proposal: string }>('/api/admin/ai/proposal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           id: selectedSubmission.id,
           type: selectedSubmission.type,
           name: selectedSubmission.name,
@@ -149,10 +137,8 @@ export default function AdminDashboard() {
           phone: selectedSubmission.phone,
           email: selectedSubmission.email,
           description: selectedSubmission.description,
-        }),
+        },
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Falha ao gerar proposta.');
 
       setCurrentProposal(data.proposal);
       setSubmissions(prev =>
@@ -172,19 +158,16 @@ export default function AdminDashboard() {
     if (!selectedSubmission) return;
     setAnalyzingTriage(true);
     try {
-      const res = await fetch('/api/admin/ai/analyze', {
+      const data = await adminRequest<{ analysis: AiAnalysis }>('/api/admin/ai/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           id: selectedSubmission.id,
           type: selectedSubmission.type,
           name: selectedSubmission.name,
           company: selectedSubmission.company,
           description: selectedSubmission.description,
-        }),
+        },
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Falha ao analisar chamado.');
 
       setSubmissions(prev =>
         prev.map(s => s.id === selectedSubmission.id && s.type === selectedSubmission.type ? { ...s, aiAnalysis: data.analysis } : s)
@@ -202,17 +185,14 @@ export default function AdminDashboard() {
   const handleSaveProposal = async () => {
     if (!selectedSubmission) return;
     try {
-      const res = await fetch('/api/admin/submissions/proposal', {
+      await adminRequest('/api/admin/submissions/proposal', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           id: selectedSubmission.id,
           type: selectedSubmission.type,
           proposal: currentProposal,
-        }),
+        },
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
 
       setSubmissions(prev =>
         prev.map(s => s.id === selectedSubmission.id && s.type === selectedSubmission.type ? { ...s, aiProposal: currentProposal } : s)
@@ -221,7 +201,7 @@ export default function AdminDashboard() {
       setIsEditingProposal(false);
       toast.success('Proposta salva com sucesso!');
     } catch (err: any) {
-      toast.error('Erro ao salvar proposta');
+      toast.error(err.message || 'Erro ao salvar proposta');
     }
   };
 
@@ -388,7 +368,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <StatsCharts />
+            <StatsCharts submissions={submissions} loading={loading} />
 
             <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 mb-8">
               <h2 className="text-lg font-semibold text-white mb-4">Filtros</h2>
@@ -483,7 +463,7 @@ export default function AdminDashboard() {
                               {submission.aiAnalysis?.urgencia && getUrgencyBadge(submission.aiAnalysis.urgencia)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-400">{submission.createdAt}</td>
+                          <td className="px-6 py-4 text-sm text-slate-400 whitespace-nowrap">{formatDateTime(submission.createdAt)}</td>
                           <td className="px-6 py-4 text-sm">
                             <div className="flex items-center gap-2">
                               <button
@@ -537,7 +517,7 @@ export default function AdminDashboard() {
                           )}
                         </h2>
                         <p className="text-slate-400 text-xs">
-                          {selectedSubmission.type} • Enviado em {selectedSubmission.createdAt}
+                          {selectedSubmission.type} • Enviado em {formatDateTime(selectedSubmission.createdAt)}
                         </p>
                       </div>
                     </div>
@@ -662,7 +642,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          {selectedSubmission.aiAnalysis.tags && selectedSubmission.aiAnalysis.tags.length > 0 && (
+                          {Array.isArray(selectedSubmission.aiAnalysis.tags) && selectedSubmission.aiAnalysis.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 items-center">
                               <Tag size={13} className="text-slate-400" />
                               {selectedSubmission.aiAnalysis.tags.map((tag, i) => (

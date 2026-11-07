@@ -1,6 +1,7 @@
 import serverless from 'serverless-http';
-import express from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import crypto from 'crypto';
+import { z } from 'zod';
 import {
   createTechnicalSupportRequest,
   createConsultingRequest,
@@ -8,35 +9,38 @@ import {
   createContactMessage,
   createItProjectRequest,
   createItManagementRequest,
-  getTechnicalSupportRequests,
-  getEquipmentSalesRequests,
-  getConsultingRequests,
-  getContactMessages,
-  getItProjectRequests,
-  getItManagementRequests,
-  updateTechnicalSupportRequestStatus,
-  updateEquipmentSalesRequestStatus,
-  updateConsultingRequestStatus,
-  updateContactMessageStatus,
-  updateItProjectRequestStatus,
-  updateItManagementRequestStatus,
   getUsers,
   createUser,
+  updateUser,
   deleteUser,
+  findUserByEmail,
   verifyUserPassword,
-  getLebIaTickets,
-  updateLebIaTicketStatus,
+  updateSubmissionStatus,
   updateSubmissionAiProposal,
   updateSubmissionAiAnalysis,
   ensureSchema,
-  normalizeStatus,
+  isPanelStatus,
+  isSubmissionType,
+  type SubmissionType,
+  type UserRole,
 } from '../../server/db';
-import { runAiChat, aiRateLimited, generateAiProposal, analyzeAiSubmission } from '../../server/ai';
+import { runAiChat, generateAiProposal, analyzeAiSubmission, AiUserError } from '../../server/ai';
+import { listAdminSubmissions } from '../../server/submissions';
+import { isRateLimited } from '../../server/rate-limit';
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '200kb' }));
 app.use(express.urlencoded({ extended: true }));
+
+const TEN_MINUTES = 10 * 60 * 1000;
+const PUBLIC_ERROR =
+  'Não foi possível enviar agora. Tente novamente em instantes ou fale com a gente pelo WhatsApp (12) 98817-6687.';
+
+function clientIp(req: Request) {
+  const raw = req.headers['x-nf-client-connection-ip'] || req.headers['x-forwarded-for'] || req.ip || 'anon';
+  return String(raw).split(',')[0].trim();
+}
 
 // Garante colunas/tabelas novas do schema antes de qualquer rota da API
 app.use('/api', async (_req, _res, next) => {
@@ -49,100 +53,225 @@ app.use('/api', async (_req, _res, next) => {
 });
 
 // ─── FORMULÁRIOS PÚBLICOS ─────────────────────────────────────────────────────
+// Só os campos esperados são gravados, com os limites de tamanho das colunas.
 
-app.post('/api/support', async (req, res) => {
-  try {
-    const result = await createTechnicalSupportRequest(req.body);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+const LONG_TEXT = 10_000;
+
+const required = (label: string, max: number) =>
+  z
+    .string({ error: `Preencha o campo ${label}.` })
+    .trim()
+    .min(1, `Preencha o campo ${label}.`)
+    .max(max, `O campo ${label} aceita no máximo ${max} caracteres.`);
+
+const optional = (label: string, max: number) =>
+  z
+    .string({ error: `O campo ${label} é inválido.` })
+    .trim()
+    .max(max, `O campo ${label} aceita no máximo ${max} caracteres.`)
+    .optional()
+    .transform((value) => value || undefined);
+
+const email = z
+  .string({ error: 'Informe um e-mail válido.' })
+  .trim()
+  .max(320, 'O e-mail informado é muito longo.')
+  .email('Informe um e-mail válido.');
+
+const contactFields = {
+  name: required('Nome', 255),
+  email,
+  phone: required('Telefone', 20),
+};
+
+// Colunas "company" obrigatórias no banco aceitam texto vazio
+const companyOrEmpty = optional('Empresa', 255).transform((value) => value ?? '');
+
+const supportSchema = z.object({
+  ...contactFields,
+  company: companyOrEmpty,
+  problemType: required('Tipo de problema', 50),
+  urgency: required('Urgência', 50),
+  description: required('Descrição do problema', LONG_TEXT),
 });
 
-app.post('/api/consulting', async (req, res) => {
-  try {
-    const result = await createConsultingRequest(req.body);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+const equipmentSchema = z.object({
+  ...contactFields,
+  company: companyOrEmpty,
+  equipmentType: required('Tipo de equipamento', 100),
+  quantity: z.coerce
+    .number({ error: 'Informe a quantidade.' })
+    .int('A quantidade deve ser um número inteiro.')
+    .min(1, 'A quantidade deve ser pelo menos 1.')
+    .max(100_000, 'A quantidade informada é muito alta.'),
+  specifications: required('Especificações', LONG_TEXT),
+  budget: optional('Orçamento', 100),
+  timeline: required('Prazo', 50),
 });
 
-app.post('/api/equipment', async (req, res) => {
-  try {
-    const result = await createEquipmentSalesRequest(req.body);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+const consultingSchema = z.object({
+  ...contactFields,
+  company: companyOrEmpty,
+  consultingType: required('Tipo de consultoria', 100),
+  currentChallenges: required('Desafios atuais', LONG_TEXT),
+  objectives: required('Objetivos', LONG_TEXT),
+  teamSize: optional('Tamanho da equipe', 50),
+  budget: optional('Orçamento', 100),
 });
 
-app.post('/api/contact', async (req, res) => {
-  try {
-    const result = await createContactMessage(req.body);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+const contactSchema = z.object({
+  name: required('Nome', 255),
+  email,
+  phone: optional('Telefone', 20),
+  company: optional('Empresa', 255),
+  subject: optional('Assunto', 255).transform((value) => value ?? 'Contato via site'),
+  message: required('Mensagem', LONG_TEXT),
 });
 
-app.post('/api/projects', async (req, res) => {
-  try {
-    const result = await createItProjectRequest(req.body);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+const projectsSchema = z.object({
+  ...contactFields,
+  company: optional('Empresa', 255),
+  projectType: required('Tipo de projeto', 100),
+  timeline: required('Prazo', 50),
+  budget: required('Orçamento', 50),
+  description: required('Descrição do projeto', LONG_TEXT),
 });
 
-app.post('/api/management', async (req, res) => {
-  try {
-    const result = await createItManagementRequest(req.body);
-    res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+const managementSchema = z.object({
+  ...contactFields,
+  company: optional('Empresa', 255),
+  managementType: required('Tipo de gestão', 100),
+  userCount: required('Quantidade de usuários', 50),
+  infrastructure: required('Infraestrutura', 50),
+  challenges: required('Desafios', LONG_TEXT),
 });
+
+function publicForm<S extends z.ZodType>(
+  path: string,
+  schema: S,
+  save: (data: z.output<S>) => Promise<{ id: number } | undefined>
+) {
+  app.post(path, async (req, res) => {
+    if (isRateLimited(`form:${clientIp(req)}`, 20, TEN_MINUTES)) {
+      return res.status(429).json({ success: false, error: 'Muitos envios em pouco tempo. Aguarde alguns minutos.' });
+    }
+    const parsed = schema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' });
+    }
+    try {
+      const saved = await save(parsed.data);
+      res.json({ success: true, data: { id: saved?.id } });
+    } catch (error) {
+      console.error(`[LEB API] Falha ao salvar ${path}:`, error);
+      res.status(500).json({ success: false, error: PUBLIC_ERROR });
+    }
+  });
+}
+
+publicForm('/api/support', supportSchema, createTechnicalSupportRequest);
+publicForm('/api/equipment', equipmentSchema, createEquipmentSalesRequest);
+publicForm('/api/consulting', consultingSchema, createConsultingRequest);
+publicForm('/api/contact', contactSchema, createContactMessage);
+publicForm('/api/projects', projectsSchema, createItProjectRequest);
+publicForm('/api/management', managementSchema, createItManagementRequest);
 
 // ─── LEB IA — ATENDIMENTO N1 ──────────────────────────────────────────────────
 
 app.post('/api/ai/chat', async (req, res) => {
+  if (isRateLimited(`chat:${clientIp(req)}`, 30, TEN_MINUTES)) {
+    return res.status(429).json({ success: false, error: 'Muitas mensagens em pouco tempo. Aguarde alguns minutos.' });
+  }
   try {
-    const ip = String(req.headers['x-nf-client-connection-ip'] || req.headers['x-forwarded-for'] || req.ip || 'anon');
-    if (aiRateLimited(ip)) {
-      return res.status(429).json({ success: false, error: 'Muitas mensagens em pouco tempo. Aguarde alguns minutos.' });
-    }
     const result = await runAiChat(req.body?.messages);
     res.json({ success: true, data: result });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (error) {
+    if (error instanceof AiUserError) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    // Detalhes (ex.: chave não configurada) ficam só no log do servidor
+    console.error('[LEB IA] Falha no atendimento:', error);
+    res.status(503).json({ success: false, error: 'O assistente está indisponível no momento.' });
   }
 });
 
-// ─── ADMIN — LOGIN ────────────────────────────────────────────────────────────
+// ─── AUTENTICAÇÃO DO PAINEL ───────────────────────────────────────────────────
+
+type AdminSession = { email: string; role: UserRole };
+
+const TOKEN_TTL_SECONDS = 24 * 60 * 60;
+
+function tokenSecret(): string {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  // Sem JWT_SECRET: deriva de um segredo que só existe no servidor — nunca de
+  // uma constante escrita no código, que qualquer pessoa com o código leria.
+  const serverSecret = process.env.DATABASE_URL || process.env.ADMIN_PASSWORD;
+  if (!serverSecret) throw new Error('Configure a variável JWT_SECRET no servidor.');
+  return crypto.createHash('sha256').update(`lebtech-admin-token:${serverSecret}`).digest('hex');
+}
+
+function sign(data: string) {
+  return crypto.createHmac('sha256', tokenSecret()).update(data).digest('base64url');
+}
+
+function generateToken(session: AdminSession): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(
+    JSON.stringify({ ...session, iat: now, exp: now + TOKEN_TTL_SECONDS })
+  ).toString('base64url');
+  return `${header}.${payload}.${sign(`${header}.${payload}`)}`;
+}
+
+function verifyToken(token: string): AdminSession | null {
+  try {
+    const [header, payload, signature] = token.split('.');
+    if (!header || !payload || !signature) return null;
+    const expected = Buffer.from(sign(`${header}.${payload}`));
+    const received = Buffer.from(signature);
+    if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) return null;
+
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (typeof data.exp !== 'number' || data.exp < Math.floor(Date.now() / 1000)) return null;
+    // Tokens emitidos antes da existência de "role" só eram dados ao admin principal
+    return { email: String(data.email), role: data.role === 'user' ? 'user' : 'admin' };
+  } catch {
+    return null;
+  }
+}
+
+function safeEqual(a: string, b: string) {
+  const digest = (value: string) => crypto.createHash('sha256').update(value).digest();
+  return crypto.timingSafeEqual(digest(a), digest(b));
+}
 
 app.post('/api/admin/login', async (req, res) => {
+  if (isRateLimited(`login:${clientIp(req)}`, 10, 15 * 60 * 1000)) {
+    return res.status(429).json({ success: false, error: 'Muitas tentativas de login. Aguarde 15 minutos e tente novamente.' });
+  }
   try {
     const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
       return res.status(400).json({ success: false, error: 'Email e senha são obrigatórios.' });
     }
 
-    const inputEmail = String(email).trim().toLowerCase();
+    const inputEmail = email.trim().toLowerCase();
     const adminEmailEnv = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     const defaultEmails = ['admin@lebtech.com', 'admin@lebtech.com.br'];
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
     const isMatchAdminEmail = defaultEmails.includes(inputEmail) || (adminEmailEnv && inputEmail === adminEmailEnv);
 
-    if (isMatchAdminEmail && String(password) === adminPassword) {
-      const token = generateToken(email);
-      return res.json({ success: true, token });
+    if (isMatchAdminEmail && safeEqual(password, adminPassword)) {
+      return res.json({ success: true, token: generateToken({ email: inputEmail, role: 'admin' }) });
     }
 
     // Checar usuários cadastrados no banco
-    const user = await verifyUserPassword(email, password).catch(() => null);
+    const user = await verifyUserPassword(inputEmail, password).catch((err) => {
+      console.error('[LEB API] Falha ao verificar usuário:', err);
+      return null;
+    });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -150,184 +279,78 @@ app.post('/api/admin/login', async (req, res) => {
       });
     }
 
-    const token = generateToken(user.email!);
-    res.json({ success: true, token });
+    res.json({ success: true, token: generateToken({ email: user.email || inputEmail, role: user.role }) });
   } catch (error: any) {
-    res.status(401).json({ success: false, error: error.message || 'Erro ao realizar login.' });
+    console.error('[LEB API] Falha no login:', error);
+    res.status(500).json({ success: false, error: error.message || 'Erro ao realizar login.' });
   }
 });
+
+// Todas as demais rotas /api/admin exigem um token válido
+app.use('/api/admin', (req, res, next) => {
+  if (req.path === '/login') return next();
+  const auth = req.headers.authorization || '';
+  const session = auth.startsWith('Bearer ') ? verifyToken(auth.slice(7)) : null;
+  if (!session) {
+    return res.status(401).json({ success: false, error: 'Sessão expirada ou inválida. Faça login novamente.' });
+  }
+  res.locals.session = session;
+  next();
+});
+
+function requireAdminRole(_req: Request, res: Response, next: NextFunction) {
+  if ((res.locals.session as AdminSession | undefined)?.role !== 'admin') {
+    return res.status(403).json({ success: false, error: 'Apenas administradores podem gerenciar usuários.' });
+  }
+  next();
+}
 
 // ─── ADMIN — SUBMISSIONS ──────────────────────────────────────────────────────
 
 app.get('/api/admin/submissions', async (_req, res) => {
   try {
-    const [support, equipment, consulting, contact, projects, management, lebIa] =
-      await Promise.all([
-        getTechnicalSupportRequests(),
-        getEquipmentSalesRequests(),
-        getConsultingRequests(),
-        getContactMessages(),
-        getItProjectRequests(),
-        getItManagementRequests(),
-        getLebIaTickets(),
-      ]);
-
-    const all = [
-      ...support.map((s) => ({
-        id: s.id,
-        type: 'Assistência Técnica',
-        name: s.name,
-        email: s.email,
-        phone: s.phone,
-        company: s.company,
-        status: normalizeStatus(s.status),
-        createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: s.description,
-        adminNotes: s.adminNotes,
-        aiProposal: (s as any).aiProposal,
-        aiAnalysis: (s as any).aiAnalysis,
-      })),
-      ...equipment.map((s) => ({
-        id: s.id,
-        type: 'Venda de Equipamentos',
-        name: s.name,
-        email: s.email,
-        phone: s.phone,
-        company: s.company,
-        status: normalizeStatus(s.status),
-        createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: s.specifications,
-        adminNotes: s.adminNotes,
-        aiProposal: (s as any).aiProposal,
-        aiAnalysis: (s as any).aiAnalysis,
-      })),
-      ...consulting.map((s) => ({
-        id: s.id,
-        type: 'Consultoria de TI',
-        name: s.name,
-        email: s.email,
-        phone: s.phone,
-        company: s.company,
-        status: normalizeStatus(s.status),
-        createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: s.currentChallenges,
-        adminNotes: s.adminNotes,
-        aiProposal: (s as any).aiProposal,
-        aiAnalysis: (s as any).aiAnalysis,
-      })),
-      ...contact.map((s) => ({
-        id: s.id,
-        type: 'Contato',
-        name: s.name,
-        email: s.email,
-        phone: s.phone || '',
-        company: '',
-        status: normalizeStatus(s.status),
-        createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: s.message,
-        adminNotes: s.adminNotes,
-        aiProposal: (s as any).aiProposal,
-        aiAnalysis: (s as any).aiAnalysis,
-      })),
-      ...projects.map((s) => ({
-        id: s.id,
-        type: 'Projetos de TI',
-        name: s.name,
-        email: s.email,
-        phone: s.phone,
-        company: s.company || '',
-        status: normalizeStatus(s.status),
-        createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: s.description,
-        adminNotes: s.adminNotes,
-        aiProposal: (s as any).aiProposal,
-        aiAnalysis: (s as any).aiAnalysis,
-      })),
-      ...management.map((s) => ({
-        id: s.id,
-        type: 'Gestão de TI',
-        name: s.name,
-        email: s.email,
-        phone: s.phone,
-        company: s.company || '',
-        status: normalizeStatus(s.status),
-        createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: s.challenges,
-        adminNotes: s.adminNotes,
-        aiProposal: (s as any).aiProposal,
-        aiAnalysis: (s as any).aiAnalysis,
-      })),
-      ...lebIa.map((t) => ({
-        id: t.id,
-        type: 'Atendimento LEB IA',
-        name: t.name,
-        email: t.email,
-        phone: t.phone || '',
-        company: t.company || (t.city ? `Cidade: ${t.city}` : 'Cliente Particular'),
-        status: normalizeStatus(t.status),
-        createdAt: t.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
-        description: t.whatsappText || `[${t.category} - Urgência ${t.urgency}]\n${t.summary}\n${t.symptoms ? 'Sintomas: ' + t.symptoms : ''}`,
-        adminNotes: t.adminNotes,
-        aiProposal: (t as any).aiProposal,
-        aiAnalysis: (t as any).aiAnalysis || {
-          urgencia: t.urgency,
-          categoriaSugerida: t.category,
-          nivelComplexidade: t.resolvedN1 ? 'N1 - Suporte Básico' : 'N2 - Técnico Especializado',
-          impactoNegocio: t.summary,
-          tags: [t.category, `Urgência ${t.urgency}`, t.equipment || 'TI'].filter(Boolean).map(x => '#' + x.replace(/\s+/g, '')),
-          acaoRecomendada: t.preliminaryDiagnosis || (t.resolvedN1 ? 'Resolvido no N1 via LEB IA. Acompanhar satisfação.' : 'Agendar visita ou atendimento remoto com técnico responsável.')
-        },
-        rawTicket: t,
-      })),
-    ].sort((a, b) =>
-      (b.createdAt || '').localeCompare(a.createdAt || '')
-    );
-
-    res.json({ success: true, data: all });
+    res.json({ success: true, data: await listAdminSubmissions() });
   } catch (error: any) {
+    console.error('[LEB API] Falha ao listar solicitações:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+function parseSubmissionRef(body: any): { type: SubmissionType; id: number } | null {
+  const id = Number(body?.id);
+  if (!Number.isInteger(id) || id <= 0 || !isSubmissionType(body?.type)) return null;
+  return { type: body.type, id };
+}
 
 app.put('/api/admin/submissions/status', async (req, res) => {
+  const ref = parseSubmissionRef(req.body);
+  if (!ref) return res.status(400).json({ success: false, error: 'Solicitação inválida.' });
+  const { status } = req.body;
+  if (!isPanelStatus(status)) {
+    return res.status(400).json({ success: false, error: `Status inválido: ${status}` });
+  }
   try {
-    const { id, type, status } = req.body;
-    if (!['pending', 'viewed', 'responded'].includes(status)) {
-      return res.status(400).json({ success: false, error: `Status inválido: ${status}` });
-    }
-
-    if (type === 'Assistência Técnica')
-      await updateTechnicalSupportRequestStatus(id, status);
-    else if (type === 'Venda de Equipamentos')
-      await updateEquipmentSalesRequestStatus(id, status);
-    else if (type === 'Consultoria de TI')
-      await updateConsultingRequestStatus(id, status);
-    else if (type === 'Contato')
-      await updateContactMessageStatus(id, status);
-    else if (type === 'Projetos de TI')
-      await updateItProjectRequestStatus(id, status);
-    else if (type === 'Gestão de TI')
-      await updateItManagementRequestStatus(id, status);
-    else if (type === 'Atendimento LEB IA')
-      await updateLebIaTicketStatus(id, status);
-
+    const found = await updateSubmissionStatus(ref.type, ref.id, status);
+    if (!found) return res.status(404).json({ success: false, error: 'Solicitação não encontrada.' });
     res.json({ success: true });
   } catch (error: any) {
+    console.error('[LEB API] Falha ao atualizar status:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+const isFilled = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 // ✨ Gerador Automático de Propostas com IA
 app.post('/api/admin/ai/proposal', async (req, res) => {
+  const { name, company, phone, email, description } = req.body || {};
+  if (!isFilled(name) || !isFilled(description)) {
+    return res.status(400).json({ success: false, error: 'Nome e descrição são obrigatórios.' });
+  }
+  const ref = parseSubmissionRef(req.body);
   try {
-    const { type, id, name, company, phone, email, description } = req.body;
-    if (!name || !description) {
-      return res.status(400).json({ success: false, error: 'Nome e descrição são obrigatórios.' });
-    }
-    const proposal = await generateAiProposal({ type: type || 'Geral', name, company, phone, email, description });
-    if (id && type) {
-      await updateSubmissionAiProposal(type, Number(id), proposal);
-    }
+    const proposal = await generateAiProposal({ type: ref?.type || 'Geral', name, company, phone, email, description });
+    if (ref) await updateSubmissionAiProposal(ref.type, ref.id, proposal);
     res.json({ success: true, proposal });
   } catch (error: any) {
     console.error('[LEB IA] Erro ao gerar proposta:', error);
@@ -337,15 +360,14 @@ app.post('/api/admin/ai/proposal', async (req, res) => {
 
 // 🎯 Triagem e Classificação Inteligente com IA
 app.post('/api/admin/ai/analyze', async (req, res) => {
+  const { name, company, description } = req.body || {};
+  if (!isFilled(name) || !isFilled(description)) {
+    return res.status(400).json({ success: false, error: 'Nome e descrição são obrigatórios.' });
+  }
+  const ref = parseSubmissionRef(req.body);
   try {
-    const { type, id, name, company, description } = req.body;
-    if (!name || !description) {
-      return res.status(400).json({ success: false, error: 'Nome e descrição são obrigatórios.' });
-    }
-    const analysis = await analyzeAiSubmission({ type: type || 'Geral', name, company, description });
-    if (id && type) {
-      await updateSubmissionAiAnalysis(type, Number(id), analysis);
-    }
+    const analysis = await analyzeAiSubmission({ type: ref?.type || 'Geral', name, company, description });
+    if (ref) await updateSubmissionAiAnalysis(ref.type, ref.id, analysis);
     res.json({ success: true, analysis });
   } catch (error: any) {
     console.error('[LEB IA] Erro ao analisar chamado:', error);
@@ -355,69 +377,122 @@ app.post('/api/admin/ai/analyze', async (req, res) => {
 
 // Salvar proposta editada manualmente pelo admin
 app.put('/api/admin/submissions/proposal', async (req, res) => {
+  const ref = parseSubmissionRef(req.body);
+  if (!ref) return res.status(400).json({ success: false, error: 'ID e tipo são obrigatórios.' });
+  const { proposal } = req.body;
+  if (typeof proposal !== 'string') {
+    return res.status(400).json({ success: false, error: 'Proposta inválida.' });
+  }
   try {
-    const { type, id, proposal } = req.body;
-    if (!id || !type) {
-      return res.status(400).json({ success: false, error: 'ID e tipo são obrigatórios.' });
-    }
-    await updateSubmissionAiProposal(type, Number(id), proposal);
+    const found = await updateSubmissionAiProposal(ref.type, ref.id, proposal);
+    if (!found) return res.status(404).json({ success: false, error: 'Solicitação não encontrada.' });
     res.json({ success: true });
   } catch (error: any) {
+    console.error('[LEB API] Falha ao salvar proposta:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // ─── ADMIN — USERS ────────────────────────────────────────────────────────────
 
-app.get('/api/admin/users', async (_req, res) => {
+const userSchema = z.object({
+  name: z.string({ error: 'Informe o nome.' }).trim().min(1, 'Informe o nome.').max(255, 'Nome muito longo.'),
+  email,
+  role: z.enum(['admin', 'user'], { error: 'Função inválida.' }),
+  // Vazio = sem senha nova (na edição, mantém a atual)
+  password: z
+    .string()
+    .optional()
+    .transform((value) => value || undefined)
+    .refine((value) => value === undefined || value.length >= 6, 'A senha deve ter pelo menos 6 caracteres.'),
+});
+
+const toSafeUser = ({ passwordHash, openId, ...user }: Record<string, any>) => user;
+
+function parseUserId(param: string) {
+  const id = Number(param);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+app.get('/api/admin/users', requireAdminRole, async (_req, res) => {
   try {
     const users = await getUsers();
     // Nunca retornar o hash de senha
-    const safeUsers = users.map(({ passwordHash, openId, ...u }) => u);
-    res.json({ success: true, data: safeUsers });
+    res.json({ success: true, data: users.map(toSafeUser) });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.post('/api/admin/users', async (req, res) => {
+app.post('/api/admin/users', requireAdminRole, async (req, res) => {
+  const parsed = userSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' });
+  }
+  const { password, ...data } = parsed.data;
+  if (!password) {
+    return res.status(400).json({ success: false, error: 'Informe uma senha com pelo menos 6 caracteres.' });
+  }
   try {
-    const result = await createUser(req.body);
-    res.json({ success: true, data: result });
+    if (await findUserByEmail(data.email)) {
+      return res.status(409).json({ success: false, error: 'Já existe um usuário com este e-mail.' });
+    }
+    const user = await createUser({ ...data, password });
+    res.json({ success: true, data: toSafeUser(user) });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.cause ? error.cause.message : error.message });
   }
 });
 
-app.delete('/api/admin/users/:id', async (req, res) => {
+app.put('/api/admin/users/:id', requireAdminRole, async (req, res) => {
+  const id = parseUserId(req.params.id);
+  if (!id) return res.status(400).json({ success: false, error: 'Usuário inválido.' });
+  const parsed = userSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ success: false, error: parsed.error.issues[0]?.message || 'Dados inválidos.' });
+  }
   try {
-    await deleteUser(Number(req.params.id));
+    const existing = await findUserByEmail(parsed.data.email);
+    if (existing && existing.id !== id) {
+      return res.status(409).json({ success: false, error: 'Já existe um usuário com este e-mail.' });
+    }
+    const user = await updateUser(id, parsed.data);
+    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+    res.json({ success: true, data: toSafeUser(user) });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.cause ? error.cause.message : error.message });
+  }
+});
+
+app.delete('/api/admin/users/:id', requireAdminRole, async (req, res) => {
+  const id = parseUserId(req.params.id);
+  if (!id) return res.status(400).json({ success: false, error: 'Usuário inválido.' });
+  try {
+    const found = await deleteUser(id);
+    if (!found) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// ─── JWT HELPERS ──────────────────────────────────────────────────────────────
+// ─── FALLBACKS ────────────────────────────────────────────────────────────────
 
-function generateToken(email: string): string {
-  const header = Buffer.from(
-    JSON.stringify({ alg: 'HS256', typ: 'JWT' })
-  ).toString('base64url');
-  const payload = Buffer.from(
-    JSON.stringify({
-      email,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
-    })
-  ).toString('base64url');
-  const signature = crypto
-    .createHmac('sha256', process.env.JWT_SECRET || 'lebtech-jwt-secret-change-in-prod')
-    .update(`${header}.${payload}`)
-    .digest('base64url');
+app.use('/api', (_req, res) => {
+  res.status(404).json({ success: false, error: 'Rota não encontrada.' });
+});
 
-  return `${header}.${payload}.${signature}`;
-}
+// JSON malformado, corpo grande demais ou erro inesperado: sempre responde JSON
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ success: false, error: 'Requisição inválida.' });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ success: false, error: 'O conteúdo enviado é grande demais.' });
+  }
+  console.error('[LEB API] Erro inesperado:', err);
+  res.status(500).json({ success: false, error: 'Erro interno do servidor.' });
+});
 
 // ─── EXPORT para Netlify Functions ────────────────────────────────────────────
 

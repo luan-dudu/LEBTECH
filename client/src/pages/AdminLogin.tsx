@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Lock, Mail, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { saveAdminSession } from '@/lib/adminApi';
 
 export default function AdminLogin() {
   const [, setLocation] = useLocation();
@@ -34,8 +35,7 @@ export default function AdminLogin() {
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Email ou senha incorretos!');
       }
-      localStorage.setItem('adminToken', data.token);
-      localStorage.setItem('adminEmail', credentials.email);
+      saveAdminSession(data.token, credentials.email.trim());
       toast.success('Login realizado com sucesso!');
       setLocation('/admin/dashboard');
     } catch (error: any) {

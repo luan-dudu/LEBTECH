@@ -148,6 +148,7 @@ export const contactMessages = pgTable('contact_messages', {
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 320 }).notNull(),
   phone: varchar('phone', { length: 20 }),
+  company: varchar('company', { length: 255 }),
   subject: varchar('subject', { length: 255 }).notNull(),
   message: text('message').notNull(),
   adminNotes: text('admin_notes'),

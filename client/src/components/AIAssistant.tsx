@@ -118,7 +118,11 @@ export default function AIAssistant() {
   const hideOnRoute = location.startsWith('/admin');
 
   useEffect(() => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    } catch {
+      /* armazenamento indisponível (modo privado/cota cheia): segue sem histórico */
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -131,10 +135,18 @@ export default function AIAssistant() {
 
   // Balão de convite aparece uma vez por sessão
   useEffect(() => {
-    if (sessionStorage.getItem('lebtech-ai-teaser')) return;
+    try {
+      if (sessionStorage.getItem('lebtech-ai-teaser')) return;
+    } catch {
+      return;
+    }
     const t = setTimeout(() => {
       setTeaser(true);
-      sessionStorage.setItem('lebtech-ai-teaser', '1');
+      try {
+        sessionStorage.setItem('lebtech-ai-teaser', '1');
+      } catch {
+        /* ignore */
+      }
     }, 6000);
     return () => clearTimeout(t);
   }, []);

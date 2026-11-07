@@ -32,6 +32,7 @@ export default function Contact() {
           name: formData.name,
           email: formData.email,
           phone: formData.phone || undefined,
+          company: formData.company || undefined,
           subject: 'Contato via site',
           message: formData.message,
         }),

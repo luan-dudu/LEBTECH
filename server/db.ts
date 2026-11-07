@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { eq, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import * as schema from '../drizzle/schema';
 import bcrypt from 'bcryptjs';
 
@@ -40,8 +40,9 @@ export const db = new Proxy({} as any, {
 });
 
 // ─── SCHEMA (auto-correção) ───────────────────────────────────────────────────
-// Não há migrations Postgres versionadas: colunas/tabelas novas do schema.ts
-// são criadas aqui de forma idempotente, uma vez por instância do servidor.
+// Não há migrations Postgres versionadas: colunas/tabelas/valores novos do
+// schema.ts são criados aqui. Uma única consulta de leitura por instância
+// confere o que já existe; comandos de alteração só rodam quando falta algo.
 
 const REQUEST_TABLES = [
   'technical_support_requests',
@@ -52,54 +53,121 @@ const REQUEST_TABLES = [
   'it_management_requests',
 ];
 
-const SCHEMA_STATEMENTS = [
-  ...REQUEST_TABLES.map(
-    (t) => `ALTER TABLE IF EXISTS ${t}
-      ADD COLUMN IF NOT EXISTS admin_notes text,
-      ADD COLUMN IF NOT EXISTS ai_proposal text,
-      ADD COLUMN IF NOT EXISTS ai_analysis jsonb`
-  ),
-  `CREATE TABLE IF NOT EXISTS leb_ia_tickets (
-    id serial PRIMARY KEY,
-    name varchar(255) NOT NULL,
-    email varchar(320) NOT NULL,
-    phone varchar(50),
-    company varchar(255),
-    city varchar(100),
-    category varchar(100) NOT NULL,
-    urgency varchar(50) NOT NULL,
-    equipment varchar(255),
-    summary text NOT NULL,
-    symptoms text,
-    steps_taken text,
-    preliminary_diagnosis text,
-    availability varchar(100),
-    resolved_n1 boolean DEFAULT false,
-    whatsapp_text text,
-    status varchar(50) NOT NULL DEFAULT 'pending',
-    ai_proposal text,
-    ai_analysis jsonb,
-    admin_notes text,
-    created_at timestamp NOT NULL DEFAULT now(),
-    updated_at timestamp NOT NULL DEFAULT now()
-  )`,
-  // O painel admin usa pending/viewed/responded para todas as solicitações
-  ...[
-    'support_status',
-    'sales_status',
-    'consulting_status',
-    'contact_status',
-    'project_status',
-    'management_status',
-  ].flatMap((type) =>
-    ['pending', 'viewed', 'responded'].map(
-      (value) => `ALTER TYPE ${type} ADD VALUE IF NOT EXISTS '${value}'`
-    )
-  ),
+const PANEL_COLUMNS: Record<string, string> = {
+  admin_notes: 'text',
+  ai_proposal: 'text',
+  ai_analysis: 'jsonb',
+};
+
+const EXTRA_COLUMNS: Record<string, Record<string, string>> = {
+  contact_messages: { company: 'varchar(255)' },
+};
+
+// O painel admin usa pending/viewed/responded para todas as solicitações
+const STATUS_ENUMS = [
+  'support_status',
+  'sales_status',
+  'consulting_status',
+  'contact_status',
+  'project_status',
+  'management_status',
 ];
+const PANEL_STATUSES = ['pending', 'viewed', 'responded'];
+
+const CREATE_LEB_IA_TICKETS = `CREATE TABLE IF NOT EXISTS leb_ia_tickets (
+  id serial PRIMARY KEY,
+  name varchar(255) NOT NULL,
+  email varchar(320) NOT NULL,
+  phone varchar(50),
+  company varchar(255),
+  city varchar(100),
+  category varchar(100) NOT NULL,
+  urgency varchar(50) NOT NULL,
+  equipment varchar(255),
+  summary text NOT NULL,
+  symptoms text,
+  steps_taken text,
+  preliminary_diagnosis text,
+  availability varchar(100),
+  resolved_n1 boolean DEFAULT false,
+  whatsapp_text text,
+  status varchar(50) NOT NULL DEFAULT 'pending',
+  ai_proposal text,
+  ai_analysis jsonb,
+  admin_notes text,
+  created_at timestamp NOT NULL DEFAULT now(),
+  updated_at timestamp NOT NULL DEFAULT now()
+)`;
+
+const sqlList = (values: string[]) => values.map((v) => `'${v}'`).join(', ');
+
+async function findMissingSchemaStatements(): Promise<string[]> {
+  const result = await db.execute(
+    sql.raw(`
+      SELECT 'column' AS kind, table_name AS name, column_name AS detail
+        FROM information_schema.columns
+       WHERE table_schema = current_schema()
+         AND table_name IN (${sqlList([...REQUEST_TABLES, 'leb_ia_tickets'])})
+      UNION ALL
+      SELECT 'enum', t.typname, e.enumlabel
+        FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid
+       WHERE t.typname IN (${sqlList(STATUS_ENUMS)})
+    `)
+  );
+  const rows: { kind: string; name: string; detail: string }[] = result.rows ?? result;
+  const columns = rows.filter((r) => r.kind === 'column');
+  const enumValues = rows.filter((r) => r.kind === 'enum');
+
+  const tables = new Set(columns.map((r) => r.name));
+  const existingColumns = new Set(columns.map((r) => `${r.name}.${r.detail}`));
+  const enums = new Set(enumValues.map((r) => r.name));
+  const existingEnumValues = new Set(enumValues.map((r) => `${r.name}.${r.detail}`));
+
+  const statements: string[] = [];
+  for (const table of REQUEST_TABLES) {
+    if (!tables.has(table)) continue; // tabelas base são criadas pelo drizzle-kit push
+    const missing = Object.entries({ ...PANEL_COLUMNS, ...EXTRA_COLUMNS[table] }).filter(
+      ([column]) => !existingColumns.has(`${table}.${column}`)
+    );
+    if (missing.length) {
+      statements.push(
+        `ALTER TABLE ${table} ${missing.map(([column, type]) => `ADD COLUMN IF NOT EXISTS ${column} ${type}`).join(', ')}`
+      );
+    }
+  }
+  if (!tables.has('leb_ia_tickets')) statements.push(CREATE_LEB_IA_TICKETS);
+  for (const type of STATUS_ENUMS) {
+    if (!enums.has(type)) continue;
+    for (const value of PANEL_STATUSES) {
+      if (!existingEnumValues.has(`${type}.${value}`)) {
+        statements.push(`ALTER TYPE ${type} ADD VALUE IF NOT EXISTS '${value}'`);
+      }
+    }
+  }
+  return statements;
+}
+
+let _schemaReady: Promise<void> | null = null;
+export function ensureSchema() {
+  if (!_schemaReady) {
+    _schemaReady = (async () => {
+      for (const statement of await findMissingSchemaStatements()) {
+        await db.execute(sql.raw(statement));
+      }
+    })().catch((err) => {
+      _schemaReady = null; // tenta de novo na próxima requisição
+      throw err;
+    });
+  }
+  return _schemaReady;
+}
+
+// ─── STATUS ───────────────────────────────────────────────────────────────────
+
+export type PanelStatus = 'pending' | 'viewed' | 'responded';
 
 // Converte status antigos de cada tabela para os 3 status usados no painel
-const LEGACY_STATUS: Record<string, 'pending' | 'viewed' | 'responded'> = {
+const LEGACY_STATUS: Record<string, PanelStatus> = {
   new: 'pending',
   read: 'viewed',
   in_progress: 'viewed',
@@ -114,24 +182,13 @@ const LEGACY_STATUS: Record<string, 'pending' | 'viewed' | 'responded'> = {
   cancelled: 'responded',
 };
 
-export function normalizeStatus(status: string | null | undefined) {
-  if (status === 'pending' || status === 'viewed' || status === 'responded') return status;
-  return (status && LEGACY_STATUS[status]) || 'pending';
+export function isPanelStatus(status: unknown): status is PanelStatus {
+  return status === 'pending' || status === 'viewed' || status === 'responded';
 }
 
-let _schemaReady: Promise<void> | null = null;
-export function ensureSchema() {
-  if (!_schemaReady) {
-    _schemaReady = (async () => {
-      for (const statement of SCHEMA_STATEMENTS) {
-        await db.execute(sql.raw(statement));
-      }
-    })().catch((err) => {
-      _schemaReady = null; // tenta de novo na próxima requisição
-      throw err;
-    });
-  }
-  return _schemaReady;
+export function normalizeStatus(status: string | null | undefined): PanelStatus {
+  if (isPanelStatus(status)) return status;
+  return (status && LEGACY_STATUS[status]) || 'pending';
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
@@ -192,6 +249,7 @@ export async function createContactMessage(data: {
   name: string;
   email: string;
   phone?: string;
+  company?: string;
   subject: string;
   message: string;
 }) {
@@ -245,164 +303,113 @@ export async function createLebIaTicket(data: schema.NewLebIaTicket) {
 }
 
 // ─── READ ─────────────────────────────────────────────────────────────────────
+// Sempre das mais novas para as mais antigas, para nenhuma solicitação recente
+// ficar de fora do limite.
 
-export async function getTechnicalSupportRequests(limit = 50, offset = 0) {
+const LIST_LIMIT = 200;
+
+export async function getTechnicalSupportRequests(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.technicalSupportRequests)
+    .orderBy(desc(schema.technicalSupportRequests.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getEquipmentSalesRequests(limit = 50, offset = 0) {
+export async function getEquipmentSalesRequests(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.equipmentSalesRequests)
+    .orderBy(desc(schema.equipmentSalesRequests.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getConsultingRequests(limit = 50, offset = 0) {
+export async function getConsultingRequests(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.consultingRequests)
+    .orderBy(desc(schema.consultingRequests.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getContactMessages(limit = 50, offset = 0) {
+export async function getContactMessages(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.contactMessages)
+    .orderBy(desc(schema.contactMessages.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getItProjectRequests(limit = 50, offset = 0) {
+export async function getItProjectRequests(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.itProjectsRequests)
+    .orderBy(desc(schema.itProjectsRequests.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getItManagementRequests(limit = 50, offset = 0) {
+export async function getItManagementRequests(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.itManagementRequests)
+    .orderBy(desc(schema.itManagementRequests.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getLebIaTickets(limit = 100, offset = 0) {
+export async function getLebIaTickets(limit = LIST_LIMIT, offset = 0) {
   return db
     .select()
     .from(schema.lebIaTickets)
+    .orderBy(desc(schema.lebIaTickets.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-// ─── UPDATE STATUS ────────────────────────────────────────────────────────────
+// ─── UPDATE (status, proposta e análise de IA) ───────────────────────────────
 
-export async function updateTechnicalSupportRequestStatus(
-  id: number,
-  status: string
-) {
-  return db
-    .update(schema.technicalSupportRequests)
-    .set({ status: status as any, updatedAt: new Date() })
-    .where(eq(schema.technicalSupportRequests.id, id));
+const SUBMISSION_TABLES = {
+  'Assistência Técnica': schema.technicalSupportRequests,
+  'Venda de Equipamentos': schema.equipmentSalesRequests,
+  'Consultoria de TI': schema.consultingRequests,
+  'Contato': schema.contactMessages,
+  'Projetos de TI': schema.itProjectsRequests,
+  'Gestão de TI': schema.itManagementRequests,
+  'Atendimento LEB IA': schema.lebIaTickets,
+};
+
+export type SubmissionType = keyof typeof SUBMISSION_TABLES;
+
+export function isSubmissionType(type: unknown): type is SubmissionType {
+  return typeof type === 'string' && Object.hasOwn(SUBMISSION_TABLES, type);
 }
 
-export async function updateEquipmentSalesRequestStatus(
-  id: number,
-  status: string
-) {
-  return db
-    .update(schema.equipmentSalesRequests)
-    .set({ status: status as any, updatedAt: new Date() })
-    .where(eq(schema.equipmentSalesRequests.id, id));
-}
-
-export async function updateConsultingRequestStatus(
-  id: number,
-  status: string
-) {
-  return db
-    .update(schema.consultingRequests)
-    .set({ status: status as any, updatedAt: new Date() })
-    .where(eq(schema.consultingRequests.id, id));
-}
-
-export async function updateContactMessageStatus(id: number, status: string) {
-  return db
-    .update(schema.contactMessages)
-    .set({ status: status as any, updatedAt: new Date() })
-    .where(eq(schema.contactMessages.id, id));
-}
-
-export async function updateItProjectRequestStatus(
-  id: number,
-  status: string
-) {
-  return db
-    .update(schema.itProjectsRequests)
-    .set({ status: status as any, updatedAt: new Date() })
-    .where(eq(schema.itProjectsRequests.id, id));
-}
-
-export async function updateItManagementRequestStatus(
-  id: number,
-  status: string
-) {
-  return db
-    .update(schema.itManagementRequests)
-    .set({ status: status as any, updatedAt: new Date() })
-    .where(eq(schema.itManagementRequests.id, id));
-}
-
-export async function updateLebIaTicketStatus(
-  id: number,
-  status: string
-) {
-  return db
-    .update(schema.lebIaTickets)
-    .set({ status: status, updatedAt: new Date() })
-    .where(eq(schema.lebIaTickets.id, id));
-}
-
-// ─── UPDATE AI PROPOSAL & ANALYSIS ──────────────────────────────────────────
-
-export async function updateSubmissionAiProposal(type: string, id: number, proposal: string) {
-  const table =
-    type === 'Assistência Técnica' ? schema.technicalSupportRequests :
-    type === 'Venda de Equipamentos' ? schema.equipmentSalesRequests :
-    type === 'Consultoria de TI' ? schema.consultingRequests :
-    type === 'Projetos de TI' ? schema.itProjectsRequests :
-    type === 'Gestão de TI' ? schema.itManagementRequests :
-    type === 'Atendimento LEB IA' ? schema.lebIaTickets :
-    schema.contactMessages;
-
-  return db
+/** Atualiza uma solicitação; retorna false se o registro não existe. */
+async function updateSubmission(type: SubmissionType, id: number, values: Record<string, unknown>) {
+  const table = SUBMISSION_TABLES[type];
+  const updated = await db
     .update(table)
-    .set({ aiProposal: proposal, updatedAt: new Date() })
-    .where(eq(table.id, id));
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(table.id, id))
+    .returning({ id: table.id });
+  return updated.length > 0;
 }
 
-export async function updateSubmissionAiAnalysis(type: string, id: number, analysis: any) {
-  const table =
-    type === 'Assistência Técnica' ? schema.technicalSupportRequests :
-    type === 'Venda de Equipamentos' ? schema.equipmentSalesRequests :
-    type === 'Consultoria de TI' ? schema.consultingRequests :
-    type === 'Projetos de TI' ? schema.itProjectsRequests :
-    type === 'Gestão de TI' ? schema.itManagementRequests :
-    type === 'Atendimento LEB IA' ? schema.lebIaTickets :
-    schema.contactMessages;
+export function updateSubmissionStatus(type: SubmissionType, id: number, status: PanelStatus) {
+  return updateSubmission(type, id, { status });
+}
 
-  return db
-    .update(table)
-    .set({ aiAnalysis: analysis, updatedAt: new Date() })
-    .where(eq(table.id, id));
+export function updateSubmissionAiProposal(type: SubmissionType, id: number, proposal: string) {
+  return updateSubmission(type, id, { aiProposal: proposal });
+}
+
+export function updateSubmissionAiAnalysis(type: SubmissionType, id: number, analysis: unknown) {
+  return updateSubmission(type, id, { aiAnalysis: analysis });
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
@@ -433,15 +440,19 @@ export async function deleteContactMessage(id: number) {
 
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
+export type UserRole = 'admin' | 'user';
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 export async function getUsers() {
-  return db.select().from(schema.users);
+  return db.select().from(schema.users).orderBy(schema.users.id);
 }
 
 export async function createUser(data: {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'user';
+  role: UserRole;
 }) {
   const passwordHash = await bcrypt.hash(data.password, 12);
 
@@ -450,7 +461,7 @@ export async function createUser(data: {
     .values({
       openId: passwordHash.slice(0, 64), // compatibilidade de coluna
       name: data.name,
-      email: data.email,
+      email: normalizeEmail(data.email),
       loginMethod: 'password',
       role: data.role,
       passwordHash,
@@ -459,15 +470,42 @@ export async function createUser(data: {
   return result[0];
 }
 
-export async function deleteUser(id: number) {
-  return db.delete(schema.users).where(eq(schema.users.id, id));
+/** Atualiza nome, e-mail, função e (opcionalmente) a senha; null se não existe. */
+export async function updateUser(
+  id: number,
+  data: { name: string; email: string; role: UserRole; password?: string }
+): Promise<schema.User | null> {
+  const values: Partial<schema.NewUser> = {
+    name: data.name,
+    email: normalizeEmail(data.email),
+    role: data.role,
+    updatedAt: new Date(),
+  };
+  if (data.password) values.passwordHash = await bcrypt.hash(data.password, 12);
+
+  const result = await db
+    .update(schema.users)
+    .set(values)
+    .where(eq(schema.users.id, id))
+    .returning();
+  return result[0] || null;
 }
 
-export async function findUserByEmail(email: string) {
+/** Remove o usuário; retorna false se ele não existe. */
+export async function deleteUser(id: number) {
+  const deleted = await db
+    .delete(schema.users)
+    .where(eq(schema.users.id, id))
+    .returning({ id: schema.users.id });
+  return deleted.length > 0;
+}
+
+export async function findUserByEmail(email: string): Promise<schema.User | null> {
   const result = await db
     .select()
     .from(schema.users)
-    .where(eq(schema.users.email, email));
+    .where(sql`lower(${schema.users.email}) = ${normalizeEmail(email)}`)
+    .limit(1);
   return result[0] || null;
 }
 
@@ -476,18 +514,22 @@ export async function verifyUserPassword(
   password: string
 ): Promise<schema.User | null> {
   const user = await findUserByEmail(email);
-  if (!user) return null;
+  if (!user || !user.isActive) return null;
 
-
-
-  // Suporte a usuários antigos (hash SHA-256 no openId) e novos (bcrypt no passwordHash)
+  let valid: boolean;
   if (user.passwordHash) {
-    const valid = await bcrypt.compare(password, user.passwordHash);
-    return valid ? user : null;
+    valid = await bcrypt.compare(password, user.passwordHash);
+  } else {
+    // Fallback legacy: SHA-256 sem salt guardado no openId
+    const { createHash } = await import('crypto');
+    valid = user.openId === createHash('sha256').update(password).digest('hex');
   }
+  if (!valid) return null;
 
-  // Fallback legacy: SHA-256 sem salt
-  const { createHash } = await import('crypto');
-  const legacyHash = createHash('sha256').update(password).digest('hex');
-  return user.openId === legacyHash ? user : null;
+  await db
+    .update(schema.users)
+    .set({ lastSignedIn: new Date() })
+    .where(eq(schema.users.id, user.id))
+    .catch((err: unknown) => console.error('[LEB DB] Falha ao registrar último acesso:', err));
+  return user;
 }

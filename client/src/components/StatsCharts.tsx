@@ -1,182 +1,203 @@
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { ReactNode } from 'react';
+import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-const StatsCharts = () => {
-  // Dados de solicitações por mês
-  const requestsData = [
-    { month: 'Jan', assistencia: 45, equipamentos: 32, consultoria: 28, projetos: 15, gestao: 22 },
-    { month: 'Fev', assistencia: 52, equipamentos: 38, consultoria: 35, projetos: 22, gestao: 28 },
-    { month: 'Mar', assistencia: 68, equipamentos: 45, consultoria: 42, projetos: 35, gestao: 38 },
-  ];
+// Gráficos calculados a partir das solicitações reais carregadas no painel.
 
-  // Dados de clientes por serviço
-  const serviceData = [
-    { name: 'Assistência Técnica', value: 145, color: '#3b82f6' },
-    { name: 'Venda de Equipamentos', value: 115, color: '#8b5cf6' },
-    { name: 'Consultoria de TI', value: 105, color: '#06b6d4' },
-    { name: 'Projetos de TI', value: 72, color: '#10b981' },
-    { name: 'Gestão de TI', value: 88, color: '#f59e0b' },
-  ];
+interface ChartSubmission {
+  type: string;
+  createdAt: string;
+}
 
-  // Dados de satisfação por mês
-  const satisfactionData = [
-    { month: 'Jan', satisfacao: 85 },
-    { month: 'Fev', satisfacao: 88 },
-    { month: 'Mar', satisfacao: 92 },
-  ];
+interface StatsChartsProps {
+  submissions: ChartSubmission[];
+  loading?: boolean;
+}
 
-  // Dados de crescimento
-  const growthData = [
-    { period: 'Q1 2025', clientes: 250, receita: 125000 },
-    { period: 'Q2 2025', clientes: 380, receita: 189000 },
-    { period: 'Q3 2025', clientes: 520, receita: 275000 },
-    { period: 'Q4 2025', clientes: 680, receita: 385000 },
-    { period: 'Q1 2026', clientes: 850, receita: 520000 },
-  ];
+// Slot 1 da paleta categórica (modo escuro), validado contra a superfície dos cartões
+const SERIES_COLOR = '#3987e5';
+const GRID_COLOR = '#334155';
+const AXIS_TEXT = '#94a3b8';
+const LABEL_TEXT = '#cbd5e1';
+const HOVER_BAND = 'rgba(148, 163, 184, 0.08)';
 
-  const COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MONTHS_SHOWN = 6;
+
+const SERVICE_TYPES = [
+  'Assistência Técnica',
+  'Venda de Equipamentos',
+  'Consultoria de TI',
+  'Projetos de TI',
+  'Gestão de TI',
+  'Atendimento LEB IA',
+  'Contato',
+];
+
+// "AAAA-MM" no fuso de Brasília (o banco guarda em UTC)
+const monthKeyFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: '2-digit',
+});
+
+function monthKey(date: Date) {
+  return monthKeyFormat.format(date).slice(0, 7);
+}
+
+function lastMonths(count: number) {
+  const [year, month] = monthKey(new Date()).split('-').map(Number);
+  return Array.from({ length: count }, (_, i) => {
+    const date = new Date(Date.UTC(year, month - 1 - (count - 1 - i), 1));
+    return {
+      key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`,
+      label: `${MONTHS[date.getUTCMonth()]}/${String(date.getUTCFullYear()).slice(2)}`,
+    };
+  });
+}
+
+const plural = (n: number) => `${n} ${n === 1 ? 'solicitação' : 'solicitações'}`;
+
+function ChartTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0].payload as { label: string; total: number };
+  return (
+    <div className="rounded-lg border border-slate-600 bg-slate-900/95 px-3 py-2 shadow-xl">
+      <p className="text-sm font-semibold text-white">{plural(item.total)}</p>
+      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400">
+        <span className="inline-block h-0.5 w-3 rounded-full" style={{ backgroundColor: SERIES_COLOR }} />
+        {item.label}
+      </p>
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  subtitle,
+  rows,
+  dimmed,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  rows: { label: string; total: number }[];
+  dimmed: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <figure className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <figcaption className="mb-6">
+        <h3 className="text-lg font-bold text-white">{title}</h3>
+        <p className="text-sm text-slate-400">{subtitle}</p>
+      </figcaption>
+      <div className={`transition-opacity ${dimmed ? 'opacity-50' : ''}`}>{children}</div>
+      {/* Versão em tabela: os mesmos valores sem depender do gráfico */}
+      <details className="mt-4 text-sm">
+        <summary className="cursor-pointer text-slate-400 hover:text-slate-200">Ver tabela</summary>
+        <table className="mt-3 w-full">
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} className="border-t border-slate-700/50">
+                <td className="py-1.5 text-slate-300">{row.label}</td>
+                <td className="py-1.5 text-right text-white tabular-nums">{row.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
+    </figure>
+  );
+}
+
+const StatsCharts = ({ submissions, loading = false }: StatsChartsProps) => {
+  const months = lastMonths(MONTHS_SHOWN);
+  const perMonth = new Map(months.map((m) => [m.key, 0]));
+  const perService = new Map(SERVICE_TYPES.map((t) => [t, 0]));
+
+  for (const submission of submissions) {
+    const date = new Date(submission.createdAt);
+    if (!Number.isNaN(date.getTime())) {
+      const key = monthKey(date);
+      if (perMonth.has(key)) perMonth.set(key, perMonth.get(key)! + 1);
+    }
+    perService.set(submission.type, (perService.get(submission.type) || 0) + 1);
+  }
+
+  const monthlyData = months.map((m) => ({ label: m.label, total: perMonth.get(m.key) || 0 }));
+  // Ranking: maior primeiro; empates mantêm a ordem fixa dos serviços
+  const serviceData = Array.from(perService, ([label, total]) => ({ label, total })).sort(
+    (a, b) => b.total - a.total
+  );
+
+  const hasData = submissions.length > 0;
 
   return (
-    <section className="py-16 bg-gradient-to-b from-transparent to-slate-900/50">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Estatísticas e Análises
-          </h2>
-          <p className="text-slate-400 text-lg">
-            Acompanhe o desempenho e crescimento da LEB TECH
-          </p>
-        </div>
-
-        {/* Grid de gráficos */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Gráfico 1: Solicitações por Mês */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-6">Solicitações por Mês</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={requestsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
-                  labelStyle={{ color: '#e2e8f0' }}
-                />
-                <Legend />
-                <Bar dataKey="assistencia" stackId="a" fill="#3b82f6" />
-                <Bar dataKey="equipamentos" stackId="a" fill="#8b5cf6" />
-                <Bar dataKey="consultoria" stackId="a" fill="#06b6d4" />
-                <Bar dataKey="projetos" stackId="a" fill="#10b981" />
-                <Bar dataKey="gestao" stackId="a" fill="#f59e0b" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Gráfico 2: Distribuição de Clientes por Serviço */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-6">Clientes por Serviço</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={serviceData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {serviceData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
-                  labelStyle={{ color: '#e2e8f0' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Gráfico 3: Satisfação do Cliente */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-6">Satisfação do Cliente (%)</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={satisfactionData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" domain={[0, 100]} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
-                  labelStyle={{ color: '#e2e8f0' }}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="satisfacao" 
-                  stroke="#10b981" 
-                  strokeWidth={3}
-                  dot={{ fill: '#10b981', r: 6 }}
-                  activeDot={{ r: 8 }}
-                  name="Taxa de Satisfação"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Gráfico 4: Crescimento de Clientes e Receita */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-            <h3 className="text-xl font-bold text-white mb-6">Crescimento Anual</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={growthData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis stroke="#94a3b8" dataKey="period" angle={-45} textAnchor="end" height={80} />
-                <YAxis stroke="#94a3b8" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }}
-                  labelStyle={{ color: '#e2e8f0' }}
-                  formatter={(value) => {
-                    if (typeof value === 'number' && value > 1000) {
-                      return `R$ ${(value / 1000).toFixed(0)}k`;
-                    }
-                    return value;
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="clientes" fill="#3b82f6" name="Clientes" />
-                <Bar dataKey="receita" fill="#10b981" name="Receita (R$)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Cards de Métricas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
-          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-6">
-            <p className="text-slate-400 text-sm">Total de Clientes</p>
-            <p className="text-3xl font-bold text-blue-400 mt-2">850+</p>
-            <p className="text-slate-500 text-xs mt-2">↑ 25% vs mês anterior</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-xl p-6">
-            <p className="text-slate-400 text-sm">Receita Total</p>
-            <p className="text-3xl font-bold text-purple-400 mt-2">R$ 520k</p>
-            <p className="text-slate-500 text-xs mt-2">↑ 35% vs trimestre anterior</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border border-cyan-500/30 rounded-xl p-6">
-            <p className="text-slate-400 text-sm">Taxa de Retenção</p>
-            <p className="text-3xl font-bold text-cyan-400 mt-2">94%</p>
-            <p className="text-slate-500 text-xs mt-2">↑ 2% vs mês anterior</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-6">
-            <p className="text-slate-400 text-sm">Satisfação Média</p>
-            <p className="text-3xl font-bold text-green-400 mt-2">92%</p>
-            <p className="text-slate-500 text-xs mt-2">↑ 4% vs mês anterior</p>
-          </div>
-        </div>
+    <section className="mb-8">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white">Estatísticas</h2>
+        <p className="text-slate-400 text-sm">Calculadas a partir das solicitações recebidas pelo site e pela LEB IA</p>
       </div>
+
+      {!hasData ? (
+        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-10 text-center text-slate-400">
+          {loading ? 'Carregando dados...' : 'Os gráficos aparecem assim que chegarem as primeiras solicitações.'}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <ChartCard
+            title="Solicitações por mês"
+            subtitle={`Últimos ${MONTHS_SHOWN} meses, todos os serviços`}
+            rows={monthlyData}
+            dimmed={loading}
+          >
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={monthlyData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                <XAxis
+                  dataKey="label"
+                  tickLine={false}
+                  axisLine={{ stroke: GRID_COLOR }}
+                  tick={{ fill: AXIS_TEXT, fontSize: 12 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={false}
+                  width={32}
+                  tick={{ fill: AXIS_TEXT, fontSize: 12 }}
+                />
+                <Tooltip cursor={{ fill: HOVER_BAND }} content={<ChartTooltip />} />
+                <Bar dataKey="total" name="Solicitações" fill={SERIES_COLOR} radius={[4, 4, 0, 0]} maxBarSize={24} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard
+            title="Solicitações por serviço"
+            subtitle="Total por origem, do maior para o menor"
+            rows={serviceData}
+            dimmed={loading}
+          >
+            <ResponsiveContainer width="100%" height={serviceData.length * 36 + 8}>
+              <BarChart data={serviceData} layout="vertical" margin={{ top: 0, right: 32, bottom: 0, left: 0 }}>
+                <XAxis type="number" hide allowDecimals={false} domain={[0, 'dataMax']} />
+                <YAxis
+                  type="category"
+                  dataKey="label"
+                  width={160}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: AXIS_TEXT, fontSize: 12 }}
+                />
+                <Tooltip cursor={{ fill: HOVER_BAND }} content={<ChartTooltip />} />
+                <Bar dataKey="total" name="Solicitações" fill={SERIES_COLOR} radius={[0, 4, 4, 0]} barSize={20}>
+                  <LabelList dataKey="total" position="right" fill={LABEL_TEXT} fontSize={12} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+      )}
     </section>
   );
 };

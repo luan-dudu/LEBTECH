@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { adminRequest } from '@/lib/adminApi';
 
 interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'user' | 'manager';
+  role: 'admin' | 'user';
   createdAt: string;
   lastSignedIn: string;
 }
@@ -16,7 +17,7 @@ export default function AdminUsersTab() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<{ name: string; email: string; password: string; role: 'admin' | 'user' | 'manager' }>({
+  const [formData, setFormData] = useState<{ name: string; email: string; password: string; role: 'admin' | 'user' }>({
     name: '', email: '', password: '', role: 'user',
   });
 
@@ -27,47 +28,41 @@ export default function AdminUsersTab() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/users');
-      const data = await response.json();
-      if (data.success) setUsers(data.data);
-    } catch {
-      toast.error('Erro ao carregar usuários');
+      const data = await adminRequest<{ data: User[] }>('/api/admin/users');
+      setUsers(data.data);
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao carregar usuários');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddUser = async () => {
-    if (!formData.name || !formData.email || (!editingId && !formData.password)) {
+  const handleSaveUser = async () => {
+    if (!formData.name.trim() || !formData.email.trim() || (!editingId && !formData.password)) {
       toast.error('Preencha todos os campos!');
       return;
     }
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error);
-      toast.success('Usuário criado com sucesso!');
+      if (editingId) {
+        await adminRequest(`/api/admin/users/${editingId}`, { method: 'PUT', body: formData });
+        toast.success('Usuário atualizado com sucesso!');
+      } else {
+        await adminRequest('/api/admin/users', { method: 'POST', body: formData });
+        toast.success('Usuário criado com sucesso!');
+      }
       setFormData({ name: '', email: '', password: '', role: 'user' });
+      setEditingId(null);
       setShowForm(false);
       fetchUsers();
     } catch (error: any) {
-      toast.error(error.message || 'Erro ao criar usuário');
+      toast.error(error.message || 'Erro ao salvar usuário');
     }
   };
 
-  const handleDeleteUser = async (id: number) => {
-    if (id === 1) {
-      toast.error('Não é possível deletar o admin principal!');
-      return;
-    }
+  const handleDeleteUser = async (user: User) => {
+    if (!window.confirm(`Remover o usuário ${user.name || user.email}? Essa ação não pode ser desfeita.`)) return;
     try {
-      const response = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error);
+      await adminRequest(`/api/admin/users/${user.id}`, { method: 'DELETE' });
       toast.success('Usuário deletado com sucesso!');
       fetchUsers();
     } catch (error: any) {
@@ -107,7 +102,7 @@ export default function AdminUsersTab() {
             <input type="email" placeholder="Email" value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none" />
-            <input type="password" placeholder="Senha" value={formData.password}
+            <input type="password" placeholder={editingId ? 'Nova senha (deixe em branco para manter)' : 'Senha (mín. 6 caracteres)'} value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="px-4 py-2 rounded-lg bg-slate-700/50 border border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none" />
             <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
@@ -117,7 +112,7 @@ export default function AdminUsersTab() {
             </select>
           </div>
           <div className="flex gap-2">
-            <button onClick={handleAddUser}
+            <button onClick={handleSaveUser}
               className="flex-1 px-4 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/50 transition-all">
               {editingId ? 'Atualizar' : 'Criar'}
             </button>
@@ -162,7 +157,7 @@ export default function AdminUsersTab() {
                         <button onClick={() => handleEditUser(user)} className="text-blue-400 hover:text-blue-300 transition-colors">
                           <Edit2 size={16} />
                         </button>
-                        <button onClick={() => handleDeleteUser(user.id)} className="text-red-400 hover:text-red-300 transition-colors">
+                        <button onClick={() => handleDeleteUser(user)} className="text-red-400 hover:text-red-300 transition-colors">
                           <Trash2 size={16} />
                         </button>
                       </div>

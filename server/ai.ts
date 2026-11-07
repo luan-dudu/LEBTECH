@@ -11,6 +11,7 @@
  *     e devolve um link wa.me com o "formulário" completo para o técnico.
  */
 import { createContactMessage, createLebIaTicket } from './db';
+import { getPricingCatalogText } from './pricing-database';
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
 
@@ -23,6 +24,16 @@ const GEMINI_MODELS = [
 ].filter((m, i, arr) => arr.indexOf(m) === i);
 const MAX_MESSAGES = 40;
 const MAX_MESSAGE_CHARS = 2000;
+
+// A hospedagem encerra a função depois de um tempo fixo; paramos antes disso
+// para devolver um erro claro em vez de uma página de timeout.
+const ATTEMPT_TIMEOUT_MS = 25_000;
+const CHAT_DEADLINE_MS = 30_000;
+const ADMIN_DEADLINE_MS = 50_000;
+const RETRYABLE_STATUS = [429, 500, 502, 503, 504];
+
+/** Erro causado pelo que o usuário enviou — a mensagem pode ser mostrada a ele. */
+export class AiUserError extends Error {}
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -151,7 +162,7 @@ const FINALIZE_TOOL = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function sanitizeHistory(messages: unknown): ChatMessage[] {
-  if (!Array.isArray(messages)) throw new Error('Formato de mensagens inválido.');
+  if (!Array.isArray(messages)) throw new AiUserError('Formato de mensagens inválido.');
   const clean = messages
     .filter(
       (m: any) =>
@@ -167,7 +178,7 @@ function sanitizeHistory(messages: unknown): ChatMessage[] {
     .slice(-MAX_MESSAGES);
 
   if (clean.length === 0 || clean[clean.length - 1].role !== 'user') {
-    throw new Error('A última mensagem deve ser do usuário.');
+    throw new AiUserError('A última mensagem deve ser do usuário.');
   }
   // Gemini exige que a conversa comece com "user"
   while (clean.length && clean[0].role !== 'user') clean.shift();
@@ -248,9 +259,9 @@ function checkSecurityGuardrail(text: string): string | null {
 
   // 1. Jailbreak / Prompt Injection patterns
   const jailbreakPatterns = [
-    /ignore (todas|suas|as) (instruções|regras|diretrizes)/i,
+    /\bignore\s+(todas\s+)?(as\s+|suas\s+|essas\s+)?(instru[çc][õo]es|regras|diretrizes)/i,
     /ignore all (previous|system) (instructions|rules|prompts)/i,
-    /desconsidere as regras/i,
+    /desconsidere\s+(todas\s+)?(as\s+|suas\s+)?(regras|instru[çc][õo]es)/i,
     /finja que voc[eê] (n[aã]o tem regras|é|pode)/i,
     /modo (desenvolvedor|dan|unlocked|sem restrições)/i,
     /system prompt/i,
@@ -264,9 +275,9 @@ function checkSecurityGuardrail(text: string): string | null {
 
   // 2. Pedidos explícitos de histórias, contos, piadas, poemas, músicas
   const creativePatterns = [
-    /^(me )?(conte|crie|gere|escreva|invente)\s+(uma?\s+)?(hist[oó]ria|conto|poema|piada|m[uú]sica|redaç[aã]o|letra)/i,
+    /(conte|crie|gere|escreva|invente)\s+(uma?\s+)?(hist[oó]ria|conto|poema|piada|m[uú]sica|reda[çc][aã]o|letra)\b/i,
     /hist[oó]ria de (um|uma) (her[oó]i|vil[aã]o|princesa|amor|ficç[aã]o)/i,
-    /^(me )?(conte|diga)\s+(uma?\s+)?piada/i,
+    /(conte|diga)\s+(uma?\s+)?piada/i,
   ];
   for (const pattern of creativePatterns) {
     if (pattern.test(lower)) {
@@ -290,14 +301,86 @@ function checkSecurityGuardrail(text: string): string | null {
   return null;
 }
 
-// ─── Chamada principal ────────────────────────────────────────────────────────
+// ─── Chamada ao Gemini (com reservas, novas tentativas e prazo) ──────────────
 
-export async function runAiChat(rawMessages: unknown): Promise<AiChatResult> {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function requireApiKey(): string {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY não configurada no servidor. Configure a variável GEMINI_API_KEY no painel da sua hospedagem (Netlify/Vercel) ou no arquivo .env local.');
   }
+  return apiKey;
+}
 
+async function generateContent(body: object, deadlineMs: number): Promise<any> {
+  const apiKey = requireApiKey();
+  const payload = JSON.stringify(body);
+  const deadline = Date.now() + deadlineMs;
+  let lastError = 'sem resposta';
+
+  for (const model of GEMINI_MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const remaining = deadline - Date.now();
+      if (remaining < 1500) {
+        throw new Error('A IA demorou demais para responder. Tente novamente em instantes.');
+      }
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+            body: payload,
+            signal: AbortSignal.timeout(Math.min(ATTEMPT_TIMEOUT_MS, remaining)),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.candidates?.[0]?.content?.parts?.length) return data;
+          lastError = `resposta vazia (${data?.candidates?.[0]?.finishReason || data?.promptFeedback?.blockReason || 'sem conteúdo'})`;
+          console.error(`[LEB IA] Gemini (${model}) não gerou conteúdo:`, lastError);
+          break; // tenta o próximo modelo
+        }
+
+        const detail = await response.text().catch(() => '');
+        lastError = `HTTP ${response.status}`;
+        console.error(`[LEB IA] Erro Gemini (${model}, tentativa ${attempt + 1}):`, response.status, detail.slice(0, 300));
+
+        if (response.status === 401 || response.status === 403 || /API key/i.test(detail)) {
+          throw new Error('A GEMINI_API_KEY configurada foi recusada pelo Google (chave inválida ou sem permissão).');
+        }
+        if (!RETRYABLE_STATUS.includes(response.status)) break; // modelo inválido etc.: próximo modelo
+        await sleep(600 * (attempt + 1));
+      } catch (err: any) {
+        if (err?.message?.startsWith('A GEMINI_API_KEY')) throw err;
+        lastError = err?.name === 'TimeoutError' ? 'tempo esgotado' : err?.message || String(err);
+        console.error(`[LEB IA] Falha ao chamar Gemini (${model}):`, lastError);
+        if (err?.name === 'TimeoutError') break; // não insiste no mesmo modelo lento
+        await sleep(500);
+      }
+    }
+  }
+  throw new Error(`A IA está indisponível no momento (${lastError}). Tente novamente em instantes.`);
+}
+
+/** Junta as partes de texto da resposta (ignorando "pensamentos" do modelo). */
+function responseText(data: any): string {
+  const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .filter((p) => typeof p.text === 'string' && !p.thought)
+    .map((p) => p.text)
+    .join('')
+    .trim();
+}
+
+const asText = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value.trim() || undefined : typeof value === 'number' ? String(value) : undefined;
+
+// ─── Chamada principal ────────────────────────────────────────────────────────
+
+export async function runAiChat(rawMessages: unknown): Promise<AiChatResult> {
   const history = sanitizeHistory(rawMessages);
 
   // Verificação prévia de segurança na última mensagem do usuário
@@ -307,64 +390,21 @@ export async function runAiChat(rawMessages: unknown): Promise<AiChatResult> {
     return { reply: guardrailReply };
   }
 
-  const requestBody = JSON.stringify({
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    contents: history.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-    tools: [FINALIZE_TOOL],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
-  });
-
-  let data: any = null;
-  for (const model of GEMINI_MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: requestBody,
-          }
-        );
-
-        if (response.ok) {
-          data = await response.json();
-          break;
-        }
-
-        const detail = await response.text().catch(() => '');
-        console.error(`[LEB IA] Erro Gemini (${model}, tentativa ${attempt + 1}):`, response.status, detail.slice(0, 300));
-
-        // Se for erro de alta demanda (503) ou rate limit (429), espera brevemente e tenta de novo
-        if ([503, 429, 500, 502, 504].includes(response.status)) {
-          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
-        } else {
-          // Erro de modelo inválido ou cliente: pula para o próximo modelo sem tentar de novo este
-          break;
-        }
-      } catch (networkErr: any) {
-        console.error(`[LEB IA] Falha de rede (${model}):`, networkErr.message);
-        await new Promise((r) => setTimeout(r, 500));
-      }
-    }
-    if (data) break;
-  }
-
-  if (!data) {
-    throw new Error('A IA está indisponível no momento. Tente novamente em instantes.');
-  }
+  const data = await generateContent(
+    {
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: history.map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+      tools: [FINALIZE_TOOL],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 4096 },
+    },
+    CHAT_DEADLINE_MS
+  );
 
   const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
-
-  const text = parts
-    .filter((p) => typeof p.text === 'string' && !p.thought)
-    .map((p) => p.text)
-    .join('')
-    .trim();
-
+  const text = responseText(data);
   const call = parts.find((p) => p.functionCall?.name === 'finalizar_atendimento')?.functionCall;
 
   if (!call) {
@@ -376,20 +416,20 @@ export async function runAiChat(rawMessages: unknown): Promise<AiChatResult> {
   const args = call.args || {};
   const ticket: AiTicket = {
     protocolo: '',
-    nome: String(args.nome || 'Cliente'),
-    empresa: args.empresa,
-    telefone: args.telefone,
-    email: args.email,
-    cidade: args.cidade,
-    categoria: String(args.categoria || 'Outro'),
-    urgencia: String(args.urgencia || 'Média'),
-    equipamento: args.equipamento,
-    resumo: String(args.resumo || ''),
-    sintomas: args.sintomas,
-    passosRealizados: args.passosRealizados,
-    diagnosticoPreliminar: args.diagnosticoPreliminar,
-    disponibilidade: args.disponibilidade,
-    resolvidoNoN1: Boolean(args.resolvidoNoN1),
+    nome: asText(args.nome) || 'Cliente',
+    empresa: asText(args.empresa),
+    telefone: asText(args.telefone),
+    email: asText(args.email),
+    cidade: asText(args.cidade),
+    categoria: asText(args.categoria) || 'Outro',
+    urgencia: asText(args.urgencia) || 'Média',
+    equipamento: asText(args.equipamento),
+    resumo: asText(args.resumo) || '',
+    sintomas: asText(args.sintomas),
+    passosRealizados: asText(args.passosRealizados),
+    diagnosticoPreliminar: asText(args.diagnosticoPreliminar),
+    disponibilidade: asText(args.disponibilidade),
+    resolvidoNoN1: args.resolvidoNoN1 === true || args.resolvidoNoN1 === 'true',
   };
 
   const savedId = await persistTicket({ ...ticket, protocolo: 'pendente' });
@@ -408,79 +448,35 @@ export async function runAiChat(rawMessages: unknown): Promise<AiChatResult> {
   return { reply, ticket, whatsappUrl };
 }
 
-// ─── Rate limit simples em memória (por IP) ───────────────────────────────────
+// ─── Chamada genérica (painel admin) ──────────────────────────────────────────
 
-const hits = new Map<string, { count: number; reset: number }>();
-
-export function aiRateLimited(ip: string, limit = 30, windowMs = 10 * 60 * 1000): boolean {
-  const now = Date.now();
-  const entry = hits.get(ip);
-  if (!entry || entry.reset < now) {
-    hits.set(ip, { count: 1, reset: now + windowMs });
-    return false;
-  }
-  entry.count++;
-  return entry.count > limit;
-}
-
-// ─── Chamada genérica ao Gemini ───────────────────────────────────────────────
-
-async function callGeminiText(prompt: string, systemInstruction?: string, jsonMode = false): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY não configurada no servidor. Configure a variável GEMINI_API_KEY no painel da sua hospedagem (Netlify/Vercel) ou no arquivo .env local.');
-  }
-
-  const requestBody: any = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 2500,
-    },
+async function callGeminiText(
+  prompt: string,
+  systemInstruction?: string,
+  options: { json?: boolean; maxOutputTokens?: number } = {}
+): Promise<string> {
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0.3,
+    maxOutputTokens: options.maxOutputTokens ?? 4096,
   };
-  if (systemInstruction) {
-    requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
-  }
-  if (jsonMode) {
-    requestBody.generationConfig.responseMimeType = 'application/json';
-  }
+  if (options.json) generationConfig.responseMimeType = 'application/json';
 
-  let lastError: any = null;
-  for (const model of GEMINI_MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify(requestBody),
-          }
-        );
+  const data = await generateContent(
+    {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig,
+      ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction }] } } : {}),
+    },
+    ADMIN_DEADLINE_MS
+  );
 
-        if (response.ok) {
-          const data = await response.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) return text;
-        }
-
-        const detail = await response.text().catch(() => '');
-        console.error(`[LEB IA] Erro Gemini (${model}):`, response.status, detail.slice(0, 150));
-        if ([503, 429, 500, 502, 504].includes(response.status)) {
-          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
-        } else {
-          break;
-        }
-      } catch (err: any) {
-        lastError = err;
-        await new Promise((r) => setTimeout(r, 500));
-      }
-    }
+  const text = responseText(data);
+  if (!text) throw new Error('A IA não retornou texto. Tente novamente.');
+  if (data?.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+    console.warn('[LEB IA] Resposta cortada pelo limite de tokens.');
   }
-  throw new Error(lastError?.message || 'Não foi possível conectar com a IA no momento.');
+  return text;
 }
-
-import { getPricingCatalogText } from './pricing-database';
 
 // ─── Gerador de Proposta Técnica Comercial com IA ─────────────────────────────
 
@@ -552,7 +548,8 @@ ${input.description}
 
 Com base na tabela de preços e nas necessidades descritas, monte a proposta comercial e técnica completa com a planilha orçamentária detalhada.`;
 
-  return callGeminiText(prompt, systemInstruction);
+  // Proposta completa com tabela orçamentária precisa de espaço de saída
+  return callGeminiText(prompt, systemInstruction, { maxOutputTokens: 8192 });
 }
 
 // ─── Triagem e Classificação Inteligente de Chamados ─────────────────────────
@@ -590,11 +587,33 @@ Empresa: ${input.company || 'Pessoa Física / Particular'}
 Descrição do chamado:
 ${input.description}`;
 
-  const rawJson = await callGeminiText(prompt, systemInstruction, true);
+  const rawJson = await callGeminiText(prompt, systemInstruction, { json: true });
+  let raw: any;
   try {
-    return JSON.parse(rawJson);
+    raw = JSON.parse(rawJson.replace(/```json/g, '').replace(/```/g, '').trim());
   } catch {
-    const cleaned = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleaned);
+    throw new Error('A IA devolveu uma análise em formato inválido. Tente classificar novamente.');
   }
+  return normalizeTriage(raw);
+}
+
+// O JSON vem do modelo: garante os tipos que o painel espera antes de salvar
+const URGENCIAS = ['Crítica', 'Alta', 'Média', 'Baixa'] as const;
+const COMPLEXIDADES = ['N1 - Suporte Básico', 'N2 - Técnico Especializado', 'N3 - Engenharia / Arquiteto'] as const;
+
+function normalizeTriage(raw: any): AiTriageAnalysis {
+  const text = (value: unknown, fallback = '') => (typeof value === 'string' ? value.trim() : fallback);
+  const tags: string[] = (Array.isArray(raw?.tags) ? raw.tags : typeof raw?.tags === 'string' ? raw.tags.split(/[,\s]+/) : [])
+    .filter((tag: unknown): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+    .map((tag: string) => (tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`))
+    .slice(0, 8);
+
+  return {
+    urgencia: URGENCIAS.includes(raw?.urgencia) ? raw.urgencia : 'Média',
+    categoriaSugerida: text(raw?.categoriaSugerida),
+    nivelComplexidade: COMPLEXIDADES.includes(raw?.nivelComplexidade) ? raw.nivelComplexidade : 'N2 - Técnico Especializado',
+    impactoNegocio: text(raw?.impactoNegocio),
+    tags,
+    acaoRecomendada: text(raw?.acaoRecomendada),
+  };
 }
