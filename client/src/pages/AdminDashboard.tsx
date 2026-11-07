@@ -655,7 +655,7 @@ export default function AdminDashboard() {
 
                           {selectedSubmission.aiAnalysis.impactoNegocio && (
                             <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
-                              <span className="font-semibold text-amber-300 block mb-0.5 flex items-center gap-1">
+                              <span className="font-semibold text-amber-300 mb-0.5 flex items-center gap-1">
                                 <AlertTriangle size={13} /> Impacto no Negócio / Cliente:
                               </span>
                               <p className="text-amber-100/90">{selectedSubmission.aiAnalysis.impactoNegocio}</p>
@@ -664,7 +664,7 @@ export default function AdminDashboard() {
 
                           {selectedSubmission.aiAnalysis.acaoRecomendada && (
                             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
-                              <span className="font-semibold text-emerald-300 block mb-0.5 flex items-center gap-1">
+                              <span className="font-semibold text-emerald-300 mb-0.5 flex items-center gap-1">
                                 <CheckCircle size={13} /> Ação Recomendada para a Equipe:
                               </span>
                               <p className="text-emerald-100/90">{selectedSubmission.aiAnalysis.acaoRecomendada}</p>
