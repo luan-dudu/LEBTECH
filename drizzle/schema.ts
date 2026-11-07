@@ -18,24 +18,32 @@ export const supportStatusEnum = pgEnum('support_status', [
   'in_progress',
   'resolved',
   'closed',
+  'viewed',
+  'responded',
 ]);
 export const salesStatusEnum = pgEnum('sales_status', [
   'pending',
   'quoted',
   'negotiating',
   'closed',
+  'viewed',
+  'responded',
 ]);
 export const consultingStatusEnum = pgEnum('consulting_status', [
   'pending',
   'scheduled',
   'in_progress',
   'completed',
+  'viewed',
+  'responded',
 ]);
 export const contactStatusEnum = pgEnum('contact_status', [
   'new',
   'read',
   'responded',
   'closed',
+  'pending',
+  'viewed',
 ]);
 // Enums para tabelas que usavam varchar('status') livre
 export const projectStatusEnum = pgEnum('project_status', [
@@ -43,12 +51,16 @@ export const projectStatusEnum = pgEnum('project_status', [
   'in_progress',
   'completed',
   'cancelled',
+  'viewed',
+  'responded',
 ]);
 export const managementStatusEnum = pgEnum('management_status', [
   'pending',
   'active',
   'paused',
   'cancelled',
+  'viewed',
+  'responded',
 ]);
 
 // ── users ──────────────────────────────────────────────────────────────────────

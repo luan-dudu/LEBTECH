@@ -29,6 +29,7 @@ import {
   updateSubmissionAiProposal,
   updateSubmissionAiAnalysis,
   ensureSchema,
+  normalizeStatus,
 } from '../../server/db';
 import { runAiChat, aiRateLimited, generateAiProposal, analyzeAiSubmission } from '../../server/ai';
 
@@ -179,7 +180,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: s.email,
         phone: s.phone,
         company: s.company,
-        status: s.status,
+        status: normalizeStatus(s.status),
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.description,
         adminNotes: s.adminNotes,
@@ -193,7 +194,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: s.email,
         phone: s.phone,
         company: s.company,
-        status: s.status,
+        status: normalizeStatus(s.status),
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.specifications,
         adminNotes: s.adminNotes,
@@ -207,7 +208,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: s.email,
         phone: s.phone,
         company: s.company,
-        status: s.status,
+        status: normalizeStatus(s.status),
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.currentChallenges,
         adminNotes: s.adminNotes,
@@ -221,7 +222,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: s.email,
         phone: s.phone || '',
         company: '',
-        status: s.status,
+        status: normalizeStatus(s.status),
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.message,
         adminNotes: s.adminNotes,
@@ -235,7 +236,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: s.email,
         phone: s.phone,
         company: s.company || '',
-        status: s.status,
+        status: normalizeStatus(s.status),
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.description,
         adminNotes: s.adminNotes,
@@ -249,7 +250,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: s.email,
         phone: s.phone,
         company: s.company || '',
-        status: s.status,
+        status: normalizeStatus(s.status),
         createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: s.challenges,
         adminNotes: s.adminNotes,
@@ -263,7 +264,7 @@ app.get('/api/admin/submissions', async (_req, res) => {
         email: t.email,
         phone: t.phone || '',
         company: t.company || (t.city ? `Cidade: ${t.city}` : 'Cliente Particular'),
-        status: t.status,
+        status: normalizeStatus(t.status),
         createdAt: t.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
         description: t.whatsappText || `[${t.category} - Urgência ${t.urgency}]\n${t.summary}\n${t.symptoms ? 'Sintomas: ' + t.symptoms : ''}`,
         adminNotes: t.adminNotes,
@@ -291,6 +292,9 @@ app.get('/api/admin/submissions', async (_req, res) => {
 app.put('/api/admin/submissions/status', async (req, res) => {
   try {
     const { id, type, status } = req.body;
+    if (!['pending', 'viewed', 'responded'].includes(status)) {
+      return res.status(400).json({ success: false, error: `Status inválido: ${status}` });
+    }
 
     if (type === 'Assistência Técnica')
       await updateTechnicalSupportRequestStatus(id, status);

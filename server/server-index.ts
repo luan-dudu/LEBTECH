@@ -34,6 +34,7 @@ import {
   updateSubmissionAiProposal,
   updateSubmissionAiAnalysis,
   ensureSchema,
+  normalizeStatus,
 } from "./db";
 import { runAiChat, aiRateLimited, generateAiProposal, analyzeAiSubmission } from "./ai";
 
@@ -165,12 +166,12 @@ async function startServer() {
       ]);
 
       const all = [
-        ...support.map((s: any) => ({ id: s.id, type: 'Assistência Técnica', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
-        ...equipment.map((s: any) => ({ id: s.id, type: 'Venda de Equipamentos', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.specifications, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
-        ...consulting.map((s: any) => ({ id: s.id, type: 'Consultoria de TI', name: s.name, email: s.email, phone: s.phone, company: s.company, status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.currentChallenges, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
-        ...contact.map((s: any) => ({ id: s.id, type: 'Contato', name: s.name, email: s.email, phone: s.phone || '', company: '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.message, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
-        ...projects.map((s: any) => ({ id: s.id, type: 'Projetos de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
-        ...management.map((s: any) => ({ id: s.id, type: 'Gestão de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: s.status, createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.challenges, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...support.map((s: any) => ({ id: s.id, type: 'Assistência Técnica', name: s.name, email: s.email, phone: s.phone, company: s.company, status: normalizeStatus(s.status), createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...equipment.map((s: any) => ({ id: s.id, type: 'Venda de Equipamentos', name: s.name, email: s.email, phone: s.phone, company: s.company, status: normalizeStatus(s.status), createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.specifications, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...consulting.map((s: any) => ({ id: s.id, type: 'Consultoria de TI', name: s.name, email: s.email, phone: s.phone, company: s.company, status: normalizeStatus(s.status), createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.currentChallenges, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...contact.map((s: any) => ({ id: s.id, type: 'Contato', name: s.name, email: s.email, phone: s.phone || '', company: '', status: normalizeStatus(s.status), createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.message, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...projects.map((s: any) => ({ id: s.id, type: 'Projetos de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: normalizeStatus(s.status), createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.description, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
+        ...management.map((s: any) => ({ id: s.id, type: 'Gestão de TI', name: s.name, email: s.email, phone: s.phone, company: s.company || '', status: normalizeStatus(s.status), createdAt: s.createdAt?.toISOString().slice(0, 16).replace('T', ' '), description: s.challenges, aiProposal: s.aiProposal, aiAnalysis: s.aiAnalysis })),
         ...lebIa.map((t: any) => ({
           id: t.id,
           type: 'Atendimento LEB IA',
@@ -178,7 +179,7 @@ async function startServer() {
           email: t.email,
           phone: t.phone || '',
           company: t.company || (t.city ? `Cidade: ${t.city}` : 'Cliente Particular'),
-          status: t.status,
+          status: normalizeStatus(t.status),
           createdAt: t.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
           description: t.whatsappText || `[${t.category} - Urgência ${t.urgency}]\n${t.summary}\n${t.symptoms ? 'Sintomas: ' + t.symptoms : ''}`,
           aiProposal: t.aiProposal,
@@ -203,6 +204,9 @@ async function startServer() {
   app.put("/api/admin/submissions/status", async (req, res) => {
     try {
       const { id, type, status } = req.body;
+      if (!["pending", "viewed", "responded"].includes(status)) {
+        return res.status(400).json({ success: false, error: `Status inválido: ${status}` });
+      }
       if (type === 'Assistência Técnica') await updateTechnicalSupportRequestStatus(id, status);
       else if (type === 'Venda de Equipamentos') await updateEquipmentSalesRequestStatus(id, status);
       else if (type === 'Consultoria de TI') await updateConsultingRequestStatus(id, status);

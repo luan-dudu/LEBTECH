@@ -83,7 +83,41 @@ const SCHEMA_STATEMENTS = [
     created_at timestamp NOT NULL DEFAULT now(),
     updated_at timestamp NOT NULL DEFAULT now()
   )`,
+  // O painel admin usa pending/viewed/responded para todas as solicitações
+  ...[
+    'support_status',
+    'sales_status',
+    'consulting_status',
+    'contact_status',
+    'project_status',
+    'management_status',
+  ].flatMap((type) =>
+    ['pending', 'viewed', 'responded'].map(
+      (value) => `ALTER TYPE ${type} ADD VALUE IF NOT EXISTS '${value}'`
+    )
+  ),
 ];
+
+// Converte status antigos de cada tabela para os 3 status usados no painel
+const LEGACY_STATUS: Record<string, 'pending' | 'viewed' | 'responded'> = {
+  new: 'pending',
+  read: 'viewed',
+  in_progress: 'viewed',
+  negotiating: 'viewed',
+  active: 'viewed',
+  paused: 'viewed',
+  scheduled: 'responded',
+  quoted: 'responded',
+  resolved: 'responded',
+  completed: 'responded',
+  closed: 'responded',
+  cancelled: 'responded',
+};
+
+export function normalizeStatus(status: string | null | undefined) {
+  if (status === 'pending' || status === 'viewed' || status === 'responded') return status;
+  return (status && LEGACY_STATUS[status]) || 'pending';
+}
 
 let _schemaReady: Promise<void> | null = null;
 export function ensureSchema() {
