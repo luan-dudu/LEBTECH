@@ -3,9 +3,9 @@
 // quando disponíveis para deixar os documentos completos.
 export const LEGAL = {
   companyName: 'LEB TECH',
-  legalName: '', // Razão social, ex.: 'LEB Tecnologia LTDA'
+  legalName: 'LEB COMPANY', // Razão social
   cnpj: '', // ex.: '00.000.000/0001-00'
-  address: '', // Endereço completo, ex.: 'Rua X, 123 — Centro'
+  address: 'Rua Doutor Samuel Libânio, 335 — CEP 37550-082', // Endereço completo
   city: 'Pouso Alegre, MG',
   privacyEmail: 'lebtech.co@gmail.com',
   whatsapp: '(12) 98817-6687',
