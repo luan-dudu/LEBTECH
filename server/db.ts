@@ -2,7 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
 import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import * as schema from '../drizzle/schema';
 import bcrypt from 'bcryptjs';
 
@@ -21,8 +21,8 @@ function getDbInstance() {
     }
 
     if (url.includes('neon.tech')) {
-      const sql = neon(url);
-      _db = drizzleNeon(sql, { schema });
+      const client = neon(url);
+      _db = drizzleNeon(client, { schema });
     } else {
       const pool = new pg.Pool({ connectionString: url });
       _db = drizzlePg(pool, { schema });
@@ -38,6 +38,67 @@ export const db = new Proxy({} as any, {
     return typeof value === 'function' ? value.bind(instance) : value;
   },
 });
+
+// ─── SCHEMA (auto-correção) ───────────────────────────────────────────────────
+// Não há migrations Postgres versionadas: colunas/tabelas novas do schema.ts
+// são criadas aqui de forma idempotente, uma vez por instância do servidor.
+
+const REQUEST_TABLES = [
+  'technical_support_requests',
+  'equipment_sales_requests',
+  'consulting_requests',
+  'contact_messages',
+  'it_projects_requests',
+  'it_management_requests',
+];
+
+const SCHEMA_STATEMENTS = [
+  ...REQUEST_TABLES.map(
+    (t) => `ALTER TABLE IF EXISTS ${t}
+      ADD COLUMN IF NOT EXISTS admin_notes text,
+      ADD COLUMN IF NOT EXISTS ai_proposal text,
+      ADD COLUMN IF NOT EXISTS ai_analysis jsonb`
+  ),
+  `CREATE TABLE IF NOT EXISTS leb_ia_tickets (
+    id serial PRIMARY KEY,
+    name varchar(255) NOT NULL,
+    email varchar(320) NOT NULL,
+    phone varchar(50),
+    company varchar(255),
+    city varchar(100),
+    category varchar(100) NOT NULL,
+    urgency varchar(50) NOT NULL,
+    equipment varchar(255),
+    summary text NOT NULL,
+    symptoms text,
+    steps_taken text,
+    preliminary_diagnosis text,
+    availability varchar(100),
+    resolved_n1 boolean DEFAULT false,
+    whatsapp_text text,
+    status varchar(50) NOT NULL DEFAULT 'pending',
+    ai_proposal text,
+    ai_analysis jsonb,
+    admin_notes text,
+    created_at timestamp NOT NULL DEFAULT now(),
+    updated_at timestamp NOT NULL DEFAULT now()
+  )`,
+];
+
+let _schemaReady: Promise<void> | null = null;
+export function ensureSchema() {
+  if (!_schemaReady) {
+    _schemaReady = (async () => {
+      for (const statement of SCHEMA_STATEMENTS) {
+        await db.execute(sql.raw(statement));
+      }
+    })().catch((err) => {
+      _schemaReady = null; // tenta de novo na próxima requisição
+      throw err;
+    });
+  }
+  return _schemaReady;
+}
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 

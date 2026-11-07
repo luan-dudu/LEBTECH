@@ -33,6 +33,7 @@ import {
   updateLebIaTicketStatus,
   updateSubmissionAiProposal,
   updateSubmissionAiAnalysis,
+  ensureSchema,
 } from "./db";
 import { runAiChat, aiRateLimited, generateAiProposal, analyzeAiSubmission } from "./ai";
 
@@ -45,6 +46,16 @@ async function startServer() {
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Garante colunas/tabelas novas do schema antes de qualquer rota da API
+  app.use("/api", async (_req, _res, next) => {
+    try {
+      await ensureSchema();
+    } catch (error) {
+      console.error("[LEB API] Falha ao sincronizar schema do banco:", error);
+    }
+    next();
+  });
 
   app.use(
     "/api/trpc",
