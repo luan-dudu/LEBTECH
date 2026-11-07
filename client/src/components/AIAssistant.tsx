@@ -424,7 +424,10 @@ export default function AIAssistant() {
                 </form>
               )}
               <p className="mt-2 text-center text-[10.5px] text-foreground/40">
-                Respostas geradas por IA • Um técnico humano confirma todo atendimento
+                Respostas geradas por IA • Um técnico humano confirma todo atendimento •{' '}
+                <a href="/privacidade" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-foreground/70">
+                  Privacidade
+                </a>
               </p>
             </footer>
           </motion.section>

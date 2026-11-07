@@ -1,5 +1,5 @@
 import { Mail, Phone, MapPin, Lock } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 export default function Footer() {
   const [, setLocation] = useLocation();
@@ -30,17 +30,17 @@ export default function Footer() {
             <h4 className="font-bold text-foreground">Serviços</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                <a href="/#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
                   Assistência Técnica
                 </a>
               </li>
               <li>
-                <a href="#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                <a href="/#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
                   Venda de Equipamentos
                 </a>
               </li>
               <li>
-                <a href="#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                <a href="/#solucoes" className="text-foreground/60 hover:text-blue-400 transition-colors">
                   Consultoria em TI
                 </a>
               </li>
@@ -52,13 +52,13 @@ export default function Footer() {
             <h4 className="font-bold text-foreground">Empresa</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#home" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                <a href="/#home" className="text-foreground/60 hover:text-blue-400 transition-colors">
                   Sobre Nós
                 </a>
               </li>
 
               <li>
-                <a href="#contato" className="text-foreground/60 hover:text-blue-400 transition-colors">
+                <a href="/#contato" className="text-foreground/60 hover:text-blue-400 transition-colors">
                   Contato
                 </a>
               </li>
@@ -103,15 +103,15 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row items-center justify-between text-sm text-foreground/60">
             <p>&copy; {currentYear} LEB Company. Todos os direitos reservados.</p>
             <div className="flex gap-6 mt-4 md:mt-0">
-              <a href="#" className="hover:text-blue-400 transition-colors">
+              <Link href="/privacidade" className="hover:text-blue-400 transition-colors">
                 Privacidade
-              </a>
-              <a href="#" className="hover:text-blue-400 transition-colors">
+              </Link>
+              <Link href="/termos" className="hover:text-blue-400 transition-colors">
                 Termos de Uso
-              </a>
-              <a href="#" className="hover:text-blue-400 transition-colors">
+              </Link>
+              <Link href="/cookies" className="hover:text-blue-400 transition-colors">
                 Cookies
-              </a>
+              </Link>
             </div>
           </div>
         </div>

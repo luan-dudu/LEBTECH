@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import PrivacyConsent from '@/components/legal/PrivacyConsent';
 
 interface ManagementModalProps {
   isOpen: boolean;
@@ -227,6 +228,8 @@ export default function ManagementModal({ isOpen, onClose }: ManagementModalProp
           </div>
 
           {/* Buttons */}
+          <PrivacyConsent id="privacy-management" />
+
           <div className="flex gap-4 pt-4 border-t border-border">
             <Button
               type="button"

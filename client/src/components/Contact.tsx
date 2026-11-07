@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import PrivacyConsent from '@/components/legal/PrivacyConsent';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -19,8 +20,9 @@ export default function Contact() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/contact', {
@@ -38,6 +40,7 @@ export default function Contact() {
       if (!data.success) throw new Error(data.error || 'Erro ao enviar');
       toast.success('Mensagem enviada com sucesso! Entraremos em contato em breve.');
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
+      form.reset();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao enviar. Tente novamente.');
     } finally {
@@ -127,6 +130,7 @@ export default function Contact() {
                 className="w-full px-4 py-3 rounded-lg bg-card border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
                 placeholder="Descreva sua necessidade..." />
             </div>
+            <PrivacyConsent id="privacy-contact" />
             <Button type="submit" disabled={isSubmitting}
               className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed group">
               {isSubmitting ? 'Enviando...' : 'Enviar Mensagem'}

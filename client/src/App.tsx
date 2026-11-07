@@ -9,6 +9,10 @@ import ServiceDetail from "./pages/ServiceDetail";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AIAssistant from "./components/AIAssistant";
+import PrivacyNotice from "./components/legal/PrivacyNotice";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
+import CookiePolicy from "./pages/CookiePolicy";
 
 
 function Router() {
@@ -16,6 +20,9 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/servicos/:service"} component={ServiceDetail} />
+      <Route path={"/privacidade"} component={PrivacyPolicy} />
+      <Route path={"/termos"} component={TermsOfUse} />
+      <Route path={"/cookies"} component={CookiePolicy} />
       <Route path={"/admin/login"} component={AdminLogin} />
       <Route path={"/admin/dashboard"} component={AdminDashboard} />
       <Route path={"/404"} component={NotFound} />
@@ -41,6 +48,7 @@ function App() {
           <Toaster />
           <Router />
           <AIAssistant />
+          <PrivacyNotice />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

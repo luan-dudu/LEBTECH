@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import PrivacyConsent from '@/components/legal/PrivacyConsent';
 
 interface EquipmentSalesModalProps {
   isOpen: boolean;
@@ -145,6 +146,8 @@ export default function EquipmentSalesModal({ isOpen, onClose }: EquipmentSalesM
               className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
               placeholder="Descreva os equipamentos que deseja comprar..." />
           </div>
+          <PrivacyConsent id="privacy-equipment" />
+
           <div className="flex gap-4 pt-4 border-t border-border">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
             <Button type="submit" disabled={isSubmitting}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import PrivacyConsent from '@/components/legal/PrivacyConsent';
 
 interface TechnicalSupportModalProps {
   isOpen: boolean;
@@ -137,6 +138,8 @@ const handleSubmit = async (e: React.FormEvent) => {
               className="w-full px-4 py-3 rounded-lg bg-background border border-border focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-foreground placeholder-foreground/40 resize-none"
               placeholder="Descreva detalhadamente o problema que está enfrentando..." />
           </div>
+
+          <PrivacyConsent id="privacy-support" />
 
           <div className="flex gap-4 pt-4 border-t border-border">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
