@@ -237,7 +237,7 @@ export default function AIAssistant() {
                     setTeaser(false);
                     setOpen(true);
                   }}
-                  className="hidden sm:block max-w-[230px] text-left rounded-2xl rounded-br-sm bg-card/95 backdrop-blur border border-blue-500/30 px-4 py-3 text-sm text-foreground/90 shadow-xl shadow-blue-500/10"
+                  className="hidden sm:block max-w-[230px] text-left rounded-2xl rounded-br-sm bg-gradient-to-br from-black via-[#12092b] to-[#091534] backdrop-blur border border-purple-500/30 px-4 py-3 text-sm text-slate-100 shadow-xl shadow-purple-900/30"
                 >
                   <span className="font-semibold text-white">Precisa de ajuda com TI?</span>
                   <br />
@@ -275,21 +275,24 @@ export default function AIAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.95 }}
             transition={{ type: 'spring', damping: 24, stiffness: 260 }}
-            className="fixed z-[60] inset-0 sm:inset-auto sm:bottom-5 sm:right-5 sm:w-[410px] sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden sm:rounded-3xl border border-white/10 bg-[oklch(0.11_0.02_270)]/95 backdrop-blur-xl shadow-2xl shadow-black/60"
+            className="fixed z-[60] inset-0 sm:inset-auto sm:bottom-5 sm:right-5 sm:w-[410px] sm:h-[640px] sm:max-h-[calc(100vh-2.5rem)] flex flex-col overflow-hidden sm:rounded-3xl border border-purple-500/30 bg-gradient-to-br from-black via-purple-950 to-blue-950 backdrop-blur-xl shadow-2xl shadow-purple-950/70"
+            style={{
+              background: 'linear-gradient(145deg, #040408 0%, #140a2e 50%, #09193a 100%)',
+            }}
           >
             {/* Header */}
-            <header className="relative flex items-center gap-3 px-5 py-4 border-b border-white/10 bg-gradient-to-r from-blue-600/25 via-purple-600/20 to-transparent">
+            <header className="relative flex items-center gap-3 px-5 py-4 border-b border-purple-500/20 bg-gradient-to-r from-black/70 via-purple-900/35 to-blue-900/35">
               <div className="relative">
                 <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-600/30">
                   <Bot size={24} className="text-white" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-[oklch(0.11_0.02_270)]" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-[#0b071a]" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-white leading-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>
                   LEB IA
                 </p>
-                <p className="text-xs text-foreground/60 flex items-center gap-1">
+                <p className="text-xs text-purple-200/70 flex items-center gap-1">
                   <Sparkles size={11} className="text-purple-300" /> Atendimento inteligente • online
                 </p>
               </div>
@@ -297,7 +300,7 @@ export default function AIAssistant() {
                 id="ai-assistant-reset"
                 onClick={reset}
                 title="Nova conversa"
-                className="p-2 rounded-lg text-foreground/60 hover:text-white hover:bg-white/10 transition"
+                className="p-2 rounded-lg text-purple-200/60 hover:text-white hover:bg-white/10 transition"
               >
                 <RotateCcw size={18} />
               </button>
@@ -305,14 +308,14 @@ export default function AIAssistant() {
                 id="ai-assistant-close"
                 onClick={() => setOpen(false)}
                 title="Fechar"
-                className="p-2 rounded-lg text-foreground/60 hover:text-white hover:bg-white/10 transition"
+                className="p-2 rounded-lg text-purple-200/60 hover:text-white hover:bg-white/10 transition"
               >
                 <X size={20} />
               </button>
             </header>
 
             {/* Mensagens */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-4 bg-gradient-to-b from-black/40 via-purple-950/20 to-blue-950/30">
               {messages.map((m, i) => (
                 <motion.div
                   key={i}
@@ -332,8 +335,8 @@ export default function AIAssistant() {
                         m.role === 'user'
                           ? 'rounded-2xl rounded-br-md bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-600/20'
                           : m.error
-                            ? 'rounded-2xl rounded-tl-md bg-red-500/10 border border-red-500/30 text-red-200'
-                            : 'rounded-2xl rounded-tl-md bg-white/[0.06] border border-white/10 text-foreground/90'
+                            ? 'rounded-2xl rounded-tl-md bg-gradient-to-br from-slate-950/90 via-purple-950/60 to-blue-950/60 border border-purple-500/30 text-purple-100'
+                            : 'rounded-2xl rounded-tl-md bg-gradient-to-br from-white/[0.07] via-purple-500/[0.08] to-blue-500/[0.08] border border-purple-500/20 text-slate-100'
                       }`}
                     >
                       {m.role === 'user' ? m.content : <RichText text={m.content} />}
@@ -362,7 +365,7 @@ export default function AIAssistant() {
                   <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                     <Bot size={15} className="text-white" />
                   </div>
-                  <div className="rounded-2xl rounded-tl-md bg-white/[0.06] border border-white/10 px-4 py-3 flex items-center gap-1.5">
+                  <div className="rounded-2xl rounded-tl-md bg-gradient-to-br from-white/[0.07] via-purple-500/[0.08] to-blue-500/[0.08] border border-purple-500/20 px-4 py-3 flex items-center gap-1.5">
                     {[0, 1, 2].map((d) => (
                       <motion.span
                         key={d}
@@ -371,7 +374,7 @@ export default function AIAssistant() {
                         transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }}
                       />
                     ))}
-                    <span className="ml-2 text-xs text-foreground/50">analisando…</span>
+                    <span className="ml-2 text-xs text-purple-200/60">analisando…</span>
                   </div>
                 </div>
               )}
@@ -382,7 +385,7 @@ export default function AIAssistant() {
                     <button
                       key={s}
                       onClick={() => send(s)}
-                      className="text-xs px-3 py-2 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20 hover:border-blue-400/60 transition"
+                      className="text-xs px-3 py-2 rounded-full border border-purple-500/30 bg-gradient-to-r from-purple-500/15 to-blue-500/15 text-purple-200 hover:from-purple-500/25 hover:to-blue-500/25 hover:border-purple-400/60 transition"
                     >
                       {s}
                     </button>
@@ -392,12 +395,12 @@ export default function AIAssistant() {
             </div>
 
             {/* Input */}
-            <footer className="border-t border-white/10 p-3 bg-black/20">
+            <footer className="border-t border-purple-500/20 p-3 bg-gradient-to-r from-black/80 via-purple-950/40 to-blue-950/40">
               {finished ? (
                 <button
                   id="ai-assistant-new"
                   onClick={reset}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-foreground/80 border border-white/10 hover:bg-white/5 transition"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-slate-200 border border-purple-500/20 hover:bg-purple-500/10 transition"
                 >
                   <RotateCcw size={16} /> Iniciar novo atendimento
                 </button>
@@ -407,7 +410,7 @@ export default function AIAssistant() {
                     e.preventDefault();
                     send(input);
                   }}
-                  className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/15 transition"
+                  className="flex items-end gap-2 rounded-2xl border border-purple-500/25 bg-black/50 p-2 focus-within:border-purple-400/60 focus-within:ring-2 focus-within:ring-purple-500/20 transition"
                 >
                   <textarea
                     id="ai-assistant-input"
@@ -423,7 +426,7 @@ export default function AIAssistant() {
                     rows={1}
                     maxLength={2000}
                     placeholder="Descreva o que está acontecendo…"
-                    className="flex-1 resize-none bg-transparent px-2 py-2 text-sm text-foreground placeholder-foreground/40 focus:outline-none max-h-32"
+                    className="flex-1 resize-none bg-transparent px-2 py-2 text-sm text-slate-100 placeholder-purple-200/40 focus:outline-none max-h-32"
                   />
                   <button
                     id="ai-assistant-send"
@@ -435,9 +438,9 @@ export default function AIAssistant() {
                   </button>
                 </form>
               )}
-              <p className="mt-2 text-center text-[10.5px] text-foreground/40">
+              <p className="mt-2 text-center text-[10.5px] text-purple-200/50">
                 Respostas geradas por IA • Um técnico humano confirma todo atendimento •{' '}
-                <a href="/privacidade" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-foreground/70">
+                <a href="/privacidade" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-purple-200/80">
                   Privacidade
                 </a>
               </p>
